@@ -1,0 +1,255 @@
+import * as d3 from 'd3'
+import { mdiArrowUpThick, mdiArrowDownThick, mdiArrowUpBold, mdiArrowDownBold, mdiStar } from '@mdi/js'
+import { mdiPin, mdiMenuLeft, mdiMenuRight, mdiDotsHorizontal, mdiCircleSmall } from '@mdi/js'
+
+const default_color = {
+  lighter_color: [
+    d3.interpolateLab('white', '#f28e2c')(0.1),
+    d3.interpolateLab('white', '#4e79a7')(0.1),
+    d3.interpolateLab('white', '#e15759')(0.1),
+    d3.interpolateLab('white', '#76b7b2')(0.1),
+  ],
+  normal_color: [
+    d3.interpolateLab('white', '#f28e2c')(1),
+    d3.interpolateLab('white', '#4e79a7')(1),
+    d3.interpolateLab('white', '#e15759')(1),
+    d3.interpolateLab('white', '#76b7b2')(1),
+  ],
+  darker_color: [
+    'rgb(246,227,100)',
+    'rgb(183,201,237)',
+    d3.interpolateLab('white', '#e15759')(0.6),
+    d3.interpolateLab('white', '#76b7b2')(0.6),
+  ],
+  color_schema: ['#f3983e', '#7297bd', "#4e79a7", "#f28e2c"],
+}
+
+//const stock_color_scheme = ['#8bc0a6', '#e1d463', '#db8073']
+//const stock_color_scheme = ['#8bc0a6', '#e1d463', 'rgb(224,27,114)']
+//const stock_color_scheme = ['rgb(43,142,64)', '#e1d463', 'rgb(224,27,114)']
+//const stock_color_scheme = ['rgb(43,142,64)', 'rgb(243,171,22)', 'rgb(224,27,114)']
+//const stock_color_scheme = ['rgb(43,142,64)', 'rgb(243,171,22)', 'rgb(231,43,50)']
+//const stock_color_scheme = ['rgb(36,140,95)', 'rgb(159,129,87)', 'rgb(231,43,50)']
+// const stock_color_scheme = ['rgb(36,140,95)', 'rgb(243,171,22)', 'rgb(231,43,50)']
+const stock_color_scheme = ['rgb(55,160,47)', 'rgb(255,217,102)', 'rgb(192,0,0)']
+//['#828F56', '#397FE6', '#C75242']
+
+const stock_color = {
+  lighter_color: stock_color_scheme.map(d => d3.interpolateLab('white', d)(0.1)),
+  normal_color: stock_color_scheme.map(d => d3.interpolateLab('white', d)(1)),
+  darker_color: stock_color_scheme.map(d => d3.interpolateLab('white', d)(0.5)),
+  color_schema: stock_color_scheme,
+}
+
+
+const datasets = [{
+  name: 'bankruptcy',
+  format: '5',
+  target: 'bankrupt?',
+  label: ['bankrupt', 'non-bankrupt'],
+  label0: ['No', 'Yes'],
+  color: default_color,
+}, {
+  name: 'german',
+  format: '0',
+  target: 'credit_risk',
+  label: ['reject', 'accept'],
+  label0: ['No', 'Yes'],
+  color: default_color,
+}, {
+  name: 'credit',
+  format: '1',
+  target: 'Approved',
+  label: ['reject', 'accept'],
+  label0: ['No', 'Yes'],
+  color: default_color,
+}, {
+  name: 'credit_new',
+  format: '1',
+  target: 'Approved',
+  label: ['reject', 'accept'],
+  label0: ['No', 'Yes'],
+  color: default_color,
+}, {
+  name: 'stock',
+  format: '4',
+  target: 'analystConsensus',
+  label: ["Increase", "Stable", "Decrease"],
+  label0: ["Increase", "Stable", "Decrease"],
+  color: stock_color,
+}, {
+  name: 'stock2',
+  format: '4',
+  target: 'analystConsensus',
+  label: ["Increase", "Stable", "Decrease"],
+  label0: ["Increase", "Stable", "Decrease"],
+  color: stock_color,
+}]
+
+const state = {
+    server_url: 'http://127.0.0.1:5000',//'http://166.111.81.51:5000',
+    layout: null,
+    primary: {
+      key: null,
+      order: -1,
+    },
+    session_id: '',
+    debug: true,
+    is_ready: false,
+    rulefilter: () => 1,
+    crossfilter: () => 1,
+    coverfilter: () => 1,
+    highlighted_sample: undefined,
+    instances: [],
+    dataset: datasets[5],
+    stack: [],
+    dataset_candidates: datasets,
+    data_features: [],
+    data_table: [],
+    data_header: [],
+    model_info: { loading: false },
+    glyph: {
+      'marker-more': {
+        path: 'M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z',
+        fill: '#333',
+      },
+      'marker-expand': {
+        path: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+        fill: '#333',
+      },
+      'arrow-up': {
+        path: mdiArrowUpBold,
+        fill: '#555',
+      },
+      'arrow-up': {
+        path: mdiArrowUpBold,
+        fill: '#555',
+      },
+      'arrow-down': {
+        path: mdiArrowDownBold,
+        fill: '#555',
+      },
+      'star': {
+        path: mdiStar,
+        fill: '#555',
+      },
+      'arrow-up-thick': {
+        path: mdiArrowUpThick,
+        fill: '#555',
+      },
+      'arrow-down-thick': {
+        path: mdiArrowDownThick,
+        fill: '#555',
+      },
+      'pin': {
+        path: mdiPin,
+        fill: '#555',
+      },
+      'prev-page': {
+        path: mdiMenuLeft,
+        fill: '#555',
+      },
+      'next-page': {
+        path: mdiMenuRight,
+        fill: '#555',
+      },
+      '1dot': {
+        path: mdiCircleSmall,
+        fill: '#555',
+      },
+      '3dots': {
+        path: mdiDotsHorizontal,
+        fill: '#555',
+      },
+    },
+    page: { width: 1800, height: 1000 },
+    covered_samples: [],
+    summary: {
+      current: null,
+      info: null,
+      show_update: false,
+      update: { changes: 0 },
+      suggestion: null,
+    },
+    matrixview: {
+      maxlen: 18,
+      font_size: 16,
+      fold_items_per_page: 10,
+      fold_normal_gap: 18,
+      fold_button_gap: 36,
+      max_level: -1,
+      sort_by_cover_num: true,
+      n_lines: 80,
+      padding: 10,
+      cell_padding: 3,
+      max_columns: 40,
+      last_show_rules: [],
+      margin: {
+        top: 130,
+        right: 180,
+        bottom: 40,
+        left: 75,
+      },
+      width: 1500,
+      height: 800,
+      coverage_width: 50,
+      glyph_width: 60,
+      glyph_padding: 35,
+      bar_min_width: 5,
+      duration: 800,
+      cell: {
+        feature_padding: .5,
+        header_opacity: .5,
+        highlight_header_opacity: .8,
+        stroke_width: 1,
+        highlight_stroke_width: 1,
+        stroke_color: 'darkgray',
+        highlight_stroke_color: 'black'
+      },
+      feature: {
+        extend_width: 60,
+        min_width_per_class: 23,
+        max_width: 60,
+        min_width: 60,
+        hidden_percent: 0.15,
+        glyph_width: 25,
+      },
+      rule_size_max: 1,
+      hist_height: 2.5,
+      order_keys: [],
+      focus_keys: [],
+      zoom_level: -1,
+      extended_cols: [],
+      row_height: {
+        small: 2,
+        medium: 6.3,
+        large: 28.5,
+      },
+      row_padding: 2,
+    },
+    featureview: {
+      textwidth: 125,
+      maxlen: 16,
+      fontweight: 400,
+      padding: 15,
+      column_height: 55,
+      chart_height: 20,
+      scrollbar_width: 10,
+      handle_color: '#666666',
+      glyph_color: '#d62728',
+      bar_color: '#888',
+      highlight_color: d3.color('#df5152').darker(-0.3),
+    },
+    tableview: {
+      height: 250
+    },
+    tooltipview: {
+      width: 300,
+      content: '',
+      visibility: 'hidden',
+      x: 100,
+      y: 100,
+    },
+}
+
+export default state;
