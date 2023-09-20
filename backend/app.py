@@ -7,7 +7,7 @@ import json
 import numpy as np
 import sys
 sys.path.append('..')
-from scalable.algorithm.model_reduction import Extractor
+from scalable.algorithm.model_reduction import Extractor, path_predict
 
 from dataset import DatasetLoader
 session_storage = {}
@@ -47,10 +47,10 @@ def get_distribution():
     session_id = data['session_id']
     loader = get_dataloader(session_id, dataname)
     path = loader.path_dict[id]
-    idxes = np.flatnonzero(path['sample']).tolist()
+    idxes = path['sample_id']
     if len(idxes) > 200:
         idxes = random.sample(idxes, 200)
-    values = loader.original_data[feature][idxes].tolist()
+    values = loader.data_table[feature][idxes].tolist()
     return json.dumps(values, cls=NpEncoder)
 
 @app.route('/api/data_table', methods=["POST"])
@@ -60,21 +60,20 @@ def get_data():
     precision = int(data['precision'])
     session_id = data['session_id']
     loader = get_dataloader(session_id, dataname)
-    features = [feature for feature in loader.original_data.columns]
-    first_columns = ['id', 'predict', loader.info['model_info']['target']]
+    features = [feature for feature in loader.data_table.columns]
+    first_columns = ['id', 'Predict', 'Label']
     features = [feature for feature in features if feature in first_columns] + [feature for feature in features if feature not in first_columns]
-    n = 10000
+    n = 2000
     values = []
     for feature in features:
-        if loader.original_data[feature].dtype != np.float64:
-            values.append(loader.original_data[feature].values[:n])
+        if loader.data_table[feature].dtype != np.float64:
+            values.append(loader.data_table[feature].values[:n])
         else:
-            values.append([round(x, precision) for x in loader.original_data[feature].values[:n]])
+            values.append([round(x, precision) for x in loader.data_table[feature].values[:n]])
     #shap = [loader.shap_values[i].values[:n] for i in range(len(loader.shap_values))]
     response = {
         'features' : features,
         'values': values,
-        'shap': loader.sample_feature_importance,
     }
     return json.dumps(response, cls=NpEncoder)
 
@@ -148,21 +147,15 @@ def get_explore_rules():
             idxes2 = [x for x in idxes if x[1] not in father_idxes]
             paths = [loader.paths[x[1]] for x in idxes2]
             X = np.array(loader.model.X)
-            y = np.zeros(X.shape[0])
-            for p in paths:
-                y += (p.get('weight') * p.get('value')) * np.array(p.get('sample'))
-            y = np.where(y > 0, 1, 0)
-            # non_zero_idxes = np.flatnonzero(y)
             X = X[relevant_sample_idxes]
-            y = y[relevant_sample_idxes]
+            pred_y = path_predict(X, paths)
             xi = 0.2
             lambda_ = 0.4
-            alpha = 150 * n / len(loader.paths)
-            cover = [np.array(p['sample'])[relevant_sample_idxes] for p in paths]
-            ex = Extractor(paths, X, y, cover)
+            alpha = loader.model.parameters['n_estimators'] * n / len(loader.paths)
+            ex = Extractor(paths, X, pred_y)
             w, _, _, _ = ex.extract(n, xi * alpha, lambda_)
             fidelity_test = ex.evaluate(w, X, y)
-            # print("fidelity", fidelity_test, len(relevant_sample_idxes), "samples")
+            print("fidelity", fidelity_test, len(relevant_sample_idxes), "samples")
             [idx] = np.nonzero(w)
             idxes2 = [idxes2[i] for i in idx]
             idxes = idxes1 + idxes2
@@ -237,10 +230,12 @@ def get_relevant_samples():
     loader = get_dataloader(session_id, dataname)
     names = data['names']
     N = data['N']
-    vec = np.zeros(loader.model.X.shape[0])
+    ids = set()
     for name in names:
-        vec += loader.paths[loader.path_index[name]]['sample']
-    ids = np.flatnonzero(vec).tolist()
+        for i in loader.paths[loader.path_index[name]]['sample_id']:
+            if i not in ids:
+                ids.add(i)
+    ids = [i for i in ids]
     ids = random.sample(ids, N)
     response = []
     for i in ids:

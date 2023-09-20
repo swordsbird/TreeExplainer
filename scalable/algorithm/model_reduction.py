@@ -1,14 +1,49 @@
-import pulp
+import gurobipy as gp
+from gurobipy import GRB
 import numpy as np
 import random
 from copy import deepcopy
 import time
+from scalable.rule_query import Table
 
 max_path_num = 10000
-max_sample_num = 5000
+max_sample_num = 10000
+
+def path_predict(X, paths):
+    n_classes = paths[0].get('n_classes', 2)
+    is_multiclass = n_classes > 2 
+    classes = paths[0].get('classes', [])
+
+    table = Table()
+    for i in range(X.shape[1]):
+        table.add(X[:, i])
+
+    if is_multiclass:
+        Y = np.zeros((X.shape[0], n_classes))
+    else:
+        Y = np.zeros(X.shape[0])
+
+    for i, p in enumerate(paths):
+        m = p.get('range')
+        missing = p.get('missing', [])
+        conds = [(key, m[key], key in missing) for key in m]
+        samples = table.query(conds)
+        d = p.get('weight') * p.get('value')
+        if is_multiclass:
+            for j in samples:
+                Y[j, p['output_class']] += d
+        else:
+            for j in samples:
+                Y[j] += d
+
+    if is_multiclass:
+        Y = np.array([classes[np.argmax(Y[i])] for i in range(Y.shape[0])])
+    else:
+        Y = np.where(Y > 0, 1, 0)
+    return Y
 
 class Extractor:
-    def __init__(self, paths, X_train, y_train, cover = None):
+    def __init__(self, paths, X_train, y_train, cover = None, greedy = False):
 
         if len(X_train) > max_sample_num:
             idx = random.sample(range(len(X_train)), max_sample_num)
@@ -17,39 +52,30 @@ class Extractor:
         else:
             self.X_raw = X_train
             self.y_raw = y_train
+    
+        self.table = Table()
+        for i in range(self.X_raw.shape[1]):
+            self.table.add(self.X_raw[:, i])
 
-        if len(paths) > max_path_num:
-            class_weight = np.array([(y_train == k).sum() for k in paths[0]['classes']])
-            class_weight = class_weight / class_weight.max()
-            for path in paths:
-                output = path['output']
-                if type(output) != int:
-                    output = np.argmax(output)
-                distribution = np.array(path['distribution']) * class_weight
-                confidence = distribution[output] / distribution.sum()
-                path['confidence'] = confidence
-            conf_thres = np.quantile(np.array([p['confidence'] for p in paths]), 1 - max_path_num / len(paths))
-            for path in paths:
-                path['skip'] = path['confidence'] < conf_thres
-        else:
-            for path in paths:
-                path['skip'] = False
+        for path in paths:
+            path['skip'] = False
 
         self.paths = paths
         self.is_multiclass = paths[0].get('is_multiclass', False)
         self.n_classes = paths[0].get('n_classes', 2)
+        self.n_paths = len(paths)
         self.classes = paths[0].get('classes', [])
-        self.mat = self.getMat(self.X_raw, self.y_raw, self.paths)
+        if self.n_classes == 2:
+            self.classes = np.unique(y_train)
         for p in paths:
             if 'cost' not in p:
                 p['cost'] = 1
         self.weight = np.array([p['cost'] for p in paths])
-        #print('values', [p['value'] for p in paths])
         self.cover = cover
+        self.greedy = greedy
 
     def compute_accuracy_on_train(self, paths):
         y_pred = self.predict(self.X_raw, paths)
-        # y_pred = np.where(y_pred == 1, 1, 0)
         return np.sum(np.where(y_pred == self.y_raw, 1, 0)) / len(self.X_raw)
 
     def evaluate(self, weights, X, y):
@@ -84,228 +110,162 @@ class Extractor:
         return Y
 
     def predict(self, X, paths):
-        if self.is_multiclass:
-            Y = np.zeros((X.shape[0], self.n_classes))
-        else:
-            Y = np.zeros(X.shape[0])
+        return path_predict(X, paths)
+    
+    '''
+    def getConstraint(self, X, y, paths):
+        table = Table()
+        for i in range(X.shape[1]):
+            table.add(X[:, i])
 
-        for i, p in enumerate(paths):
-            if self.cover is None:
-                ans = np.ones(X.shape[0])
-                m = p.get('range')
-                missing = p.get('missing', [])
-                for key in m:
-                    if key in missing:
-                        ans = ans * ((X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1]) + np.isnan(X[:, int(key)].astype(float)))
-                    else:
-                        ans = ans * (X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1])
-            else:
-                ans = self.cover[i]
-            if self.is_multiclass:
-                Y[:, p['output_class']] += ans * (p.get('weight') * p.get('value'))
-            else:
-                Y += ans * (p.get('weight') * p.get('value'))
-        if self.is_multiclass:
-            Y = np.array([self.classes[np.argmax(Y[i])] for i in range(Y.shape[0])])
-        else:
-            Y = np.where(Y > 0, 1, 0)
-        return Y
-
-    def getMat(self, X_raw, y_raw, paths):
-        mat = np.array([self.path_score(p, X_raw, y_raw) for p in paths]).astype('float')
-        return mat
-
-    def path_score(self, path, X, y):
-        value = float(path.get('value'))
-        if self.is_multiclass:
-            o = path['output_class']
-            all_ans = []
+        n_dims = self.n_classes - 1
+        n_samples = X.shape[0]
+        self.n_constrs = n_samples * n_dims
+        constrs = [[] for _ in range(self.n_constrs)]
+        inv_constrs = [[] for _ in range(self.n_paths)]
+        for p_i, path in enumerate(paths):
+            if path['skip']:
+                continue
+            m = path.get('range')
+            missing = path.get('missing', [])
+            conds = [(key, m[key], key in missing) for key in m]
+            samples = table.query(conds)
+            path_output = self.classes[path['output_class']]
+            value = float(path.get('value'))
+            dim = 0
             for i in range(self.n_classes):
                 i_class = self.classes[i]
                 for j in range(i + 1, self.n_classes):
                     j_class = self.classes[j]
-                    if not path['skip'] and i == o:
-                        ans = np.where((y == i_class) + (y == j_class), 1, 0) * np.where(y == i_class, value, -value)
-                    elif not path['skip'] and j == o:
-                        ans = np.where((y == i_class) + (y == j_class), 1, 0) * np.where(y == j_class, value, -value)
+                    if i_class != path_output and j_class != path_output:
+                        continue
+                    if self.is_multiclass:
+                        left_samples = [k for k in samples if y[k] == i_class or y[k] == j_class]
                     else:
-                        ans = np.zeros(len(y))
-                    all_ans.append(ans)
-        else:
-            if not path['skip']:
-                y = y * 2 - 1
-                ans = value * y
-            else:
-                ans = np.zeros(len(y))
+                        left_samples = samples
+                    for k in left_samples:
+                        curr = value if y[k] == path_output else -value
+                        constrs[k + dim * n_samples].append((p_i, curr))
+                        inv_constrs[p_i].append((k + dim * n_samples, curr))
+                    dim += 1
+        return constrs, inv_constrs
+    '''
+    def getConstraint(self, X, y, paths, class_weight):
+        table = Table()
+        for i in range(X.shape[1]):
+            table.add(X[:, i])
 
-        if not path['skip']:
+        n_dims = int(self.n_classes * (self.n_classes - 1) / 2)
+        n_samples = X.shape[0]
+        self.n_constrs = n_samples * n_dims
+        constrs = [[] for _ in range(self.n_constrs)]
+        inv_constrs = [[] for _ in range(self.n_paths)]
+        constr_weight = np.ones(n_dims * n_samples)
+        if class_weight == 'balanced':
+            weight = np.array([(y == c).sum() for c in self.classes]).astype(np.float64)
+            weight = 1.0 / (weight / weight.max())
+            for ci in range(self.n_classes):
+                class0 = self.classes[ci]
+                for i in range(n_samples):
+                    if y[i] == class0:
+                        for dim in range(n_dims):
+                            constr_weight[i + dim * n_samples] = weight[ci]
+
+        for p_i, path in enumerate(paths):
+            if path['skip']:
+                continue
             m = path.get('range')
             missing = path.get('missing', [])
-            for key in m:
-                if key in missing:
-                    cond = ((X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1]) + np.isnan(X[:, int(key)].astype(float)))
-                else:
-                    cond = (X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1])
-                if self.is_multiclass:
-                    for i in range(len(all_ans)):
-                        all_ans[i] = all_ans[i] * cond
-                else:
-                    ans = ans * cond
-        
-        if self.is_multiclass:
-            ans = np.array(all_ans)
+            conds = [(key, m[key], key in missing) for key in m]
+            samples = table.query(conds)
+            path_output = self.classes[path['output_class']]
+            value = float(path.get('value'))
+            dim = 0
+            for i in range(self.n_classes):
+                i_class = self.classes[i]
+                for j in range(i + 1, self.n_classes):
+                    j_class = self.classes[j]
+                    if self.is_multiclass:
+                        left_samples = [k for k in samples if y[k] == i_class or y[k] == j_class]
+                    else:
+                        left_samples = samples
+                    for k in left_samples:
+                        curr = value if y[k] == path_output else -value
+                        constrs[k + dim * n_samples].append((p_i, curr))
+                        inv_constrs[p_i].append((k + dim * n_samples, curr))
+                    dim += 1
+        return constrs, inv_constrs, constr_weight
 
-        return ans
-
-    def extract(self, m, tau, lambda_, method = 'maximize'):
-        mat = self.mat
-        w = self.weight
-        if method == 'maximize':
-            paths_weight, obj = self.LP_extraction_maximize(w, mat, m, tau, lambda_)
-        else:
-            paths_weight, obj = self.LP_extraction_minimize(w, mat, m, tau, lambda_)
+    def extract(self, max_rules, tau, lambda_, method = 'maximize', class_weight=None):
+        last = time.time()
+        self.constrs, self.inv_constrs, self.constr_weight = self.getConstraint(self.X_raw, self.y_raw, self.paths, class_weight)
+        paths_weight, obj = self.LP_extraction_maximize(self.weight, self.constrs, self.inv_constrs, self.constr_weight, max_rules, tau, lambda_)
         accuracy_origin1 = self.compute_accuracy_on_train(self.paths)
-        path_copy = deepcopy(self.paths)
-        for i in range(len(path_copy)):
-            path_copy[i]['weight'] = 1 if paths_weight[i] > 0 else 0
-        accuracy_new1 = self.compute_accuracy_on_train(path_copy)
+        for i in range(len(self.paths)):
+            self.paths[i]['weight'] = 1 if paths_weight[i] > 0 else 0
+        accuracy_new1 = self.compute_accuracy_on_train(self.paths)
+
+        curr = time.time()
+        print(f'TIME: {round(curr - last, 2)}s')
         return paths_weight, accuracy_origin1, accuracy_new1, obj
 
-    def LP_extraction_minimize(self, score, y, m, tau, lambda_):
-        m = pulp.LpProblem(sense=pulp.LpMaximize)
-        var = []
-        N = y.shape[1]
-        M = y.shape[0]
-        zero = 1000
-        for i in range(M):
-            var.append(pulp.LpVariable(f'z{i}', cat=pulp.LpContinuous, lowBound=0, upBound=1))
-        for i in range(N):
-            var.append(pulp.LpVariable(f'k{i}', cat=pulp.LpContinuous, lowBound=0))
-        first_term = pulp.LpVariable('first', cat=pulp.LpContinuous, lowBound=0)
-        second_term = pulp.LpVariable('second', cat=pulp.LpContinuous, lowBound=0)
-        m.setObjective(first_term + second_term)
-        m += (pulp.lpSum([var[j + M] for j in range(N)]) <= first_term)
-        m += (pulp.lpSum([var[j] * score[j] * lambda_ for j in range(M)]) <= second_term)
-        m += (pulp.lpSum([var[j] for j in range(M)]) <= m)
-        m += (pulp.lpSum([var[j] for j in range(M)]) >= m)
-        for j in range(N):
-            m += (var[j + M] >= zero + tau - pulp.lpSum([var[k] * y[k][j] for k in range(M)]))
-            m += (var[j + M] >= zero)
-
-        m.solve(pulp.PULP_CBC_CMD(msg=False))  # solver = pulp.solver.CPLEX())#
-        z = [var[i].value() for i in range(M)]
-        for k in np.argsort(z)[:-m]:
-            z[k] = 0
-        z = z / np.sum(z)
-        return z, (pulp.value(m.objective) - zero * N, first_term.value() - zero * N, second_term.value())
-
-    def LP_extraction_maximize_round(self, score, z, y, m, tau, lambda_):
-        
-        if self.is_multiclass:
-            K = y.shape[2]
-            N = y.shape[1]
-            M = y.shape[0]
-            yt = y.copy().reshape((M, N * K))
-            yt = yt.T
-            z0 = np.zeros(len(z))
-            z_candidates = np.flatnonzero(z)
-            tau = tau * 1.0
-            v = np.array([np.dot(z0, yt[j]) for j in range(N * K)])
-            loss_curr = np.minimum(v, tau).sum()
-            for _ in range(m):
-                best_loss_gain = -1e10
-                best_i = -1
-                for i in z_candidates:
-                    z1 = np.zeros(len(z))
-                    z1[i] = z[i]
-                    v = np.array([np.dot(z0 + z1, yt[j]) for j in range(N * K)])
-                    loss_new = np.minimum(v, tau).sum()
-                    loss_new += np.dot(z0 + z1, score) * lambda_
-                    if loss_new - loss_curr > best_loss_gain:
-                        best_loss_gain = loss_new - loss_curr
-                        best_i = i
-                v = np.array([np.dot(z0, yt[j]) for j in range(N * K)])
-                loss_curr += best_loss_gain
-                z0[best_i] = z[best_i]
-                z_candidates = [i for i in z_candidates if i != best_i]
+    def LP_extraction_maximize_round(self, score, z, inv_constrs, weight, max_rules, tau, lambda_):
+        if self.greedy:
+            z_candidates = range(len(z))
         else:
-            N = y.shape[1]
-            yt = y.T
-            z0 = np.zeros(len(z))
             z_candidates = np.flatnonzero(z)
-            tau = tau * 1.0
-            v = np.array([np.dot(z0, yt[j]) for j in range(N)])
-            loss_curr = np.minimum(v, tau).sum()
-            for _ in range(m):
-                best_loss_gain = -1e10
-                best_i = -1
-                for i in z_candidates:
-                    z1 = np.zeros(len(z))
-                    z1[i] = z[i]
-                    v = np.array([np.dot(z0 + z1, yt[j]) for j in range(N)])
-                    loss_new = np.minimum(v, tau).sum()
-                    loss_new += np.dot(z0 + z1, score) * lambda_
-                    if loss_new - loss_curr > best_loss_gain:
-                        best_loss_gain = loss_new - loss_curr
-                        best_i = i
-                v = np.array([np.dot(z0, yt[j]) for j in range(N)])
-                loss_curr += best_loss_gain
-                z0[best_i] = z[best_i]
-                z_candidates = [i for i in z_candidates if i != best_i]
+
+        z0 = np.zeros(self.n_paths)
+        v = np.zeros(self.n_constrs)
+        loss_curr = 0
+        for _ in range(max_rules):
+            best_loss_gain = -1e10
+            best_i = -1
+            for i in z_candidates:
+                v_curr = v.copy()
+                for j, value in inv_constrs[i]:
+                    v_curr[j] += z[i] * value
+                loss_new = np.dot(np.minimum(v_curr, tau), weight).sum()
+                loss_new += z[i] * score[i] * lambda_
+                if loss_new - loss_curr > best_loss_gain:
+                    best_loss_gain = loss_new - loss_curr
+                    best_i = i
+            for j, value in inv_constrs[best_i]:
+                v[j] += z[best_i] * value
+            loss_curr += best_loss_gain
+            z0[best_i] = z[best_i]
+            z_candidates = [i for i in z_candidates if i != best_i]
         
         z = z0
         z = z / np.sum(z)
         return z
 
 
-    def LP_extraction_maximize(self, score, y, m, tau, lambda_):
-        p = pulp.LpProblem(sense=pulp.LpMaximize)
-        var = []
+    def LP_extraction_maximize(self, score, constrs, inv_constrs, weight, max_rules, tau, lambda_):
+        if self.greedy:
+            z = np.ones(self.n_paths)
+            z = self.LP_extraction_maximize_round(score, z, inv_constrs, weight, max_rules, tau, lambda_)
+            return z, 0
 
-        if self.is_multiclass:
-            K = y.shape[2]
-            N = y.shape[1]
-            M = y.shape[0]
-            zero = 1000
-            for i in range(M):
-                var.append(pulp.LpVariable(f'z{i}', cat=pulp.LpContinuous, lowBound=0, upBound=1))
-            for i in range(N * K):
-                var.append(pulp.LpVariable(f'k{i}', cat=pulp.LpContinuous, lowBound=0))
-            p.setObjective(pulp.lpSum([var[j + M] for j in range(N * K)] + [var[j] * score[j] * lambda_ for j in range(M)]))
-            p += (pulp.lpSum([var[j] for j in range(M)]) <= m)
-            for l in range(K):
-                for j in range(N):
-                    p += (var[j + M + l * N] <= zero + tau)
-                    if np.abs(y[:, j, l]).sum() == 0:
-                        continue
-                    p += (var[j + M + l * N] <= zero + pulp.lpSum([var[k] * y[k][j][l] for k in range(M) if y[k][j][l] != 0]))
-        else:
-            N = y.shape[1]
-            M = y.shape[0]
-            K = 1
-            zero = 1000
-            for i in range(M):
-                var.append(pulp.LpVariable(f'z{i}', cat=pulp.LpContinuous, lowBound=0, upBound=1))
-            for i in range(N):
-                var.append(pulp.LpVariable(f'k{i}', cat=pulp.LpContinuous, lowBound=0))
-            p.setObjective(pulp.lpSum([var[j + M] for j in range(N)] + [var[j] * score[j] * lambda_ for j in range(M)]))
-            p += (pulp.lpSum([var[j] for j in range(M)]) <= m)
-            for j in range(N):
-                p += (var[j + M] <= zero + pulp.lpSum([var[k] * y[k][j] for k in range(M) if y[k][j] != 0]))
-                p += (var[j + M] <= zero + tau)
+        zero = 1000
+        model = gp.Model("MaximizeFidelity")
+        z = model.addVars(range(self.n_paths), name="z", lb=0, ub=1)
+        k = model.addVars(range(self.n_constrs), name="k", lb=0)
+        objective = gp.quicksum(k[i] * weight[i] for i in range(self.n_constrs))
+        objective += gp.quicksum(z[i] * score[i] * lambda_ for i in range(self.n_paths))
+        model.addConstr(gp.quicksum(z[i] for i in range(self.n_paths)) <= max_rules, 'sum_z')
+        for j in range(self.n_constrs):
+            model.addConstr(k[j] <= zero + tau, f'k0_{j}')
+            model.addConstr(k[j] <= zero + gp.quicksum(z[i] * value for i, value in constrs[j]), f'k1_{j}')
 
-        last = time.time()
-        p.solve(pulp.GUROBI_CMD(msg=False))
-        curr = time.time()
-        print(f'TIME: {round(curr - last, 2)}s')
+        model.setObjective(objective, sense=GRB.MAXIMIZE)
+        model.optimize()
 
-        z = np.array([var[i].value() for i in range(M)])
-        #weighted_z = [var[i].value() * np.sum(self.paths[i]['distribution']) for i in range(M)]
-        #for k in np.argsort(weighted_z)[:-m]:
-        #    z[k] = 0
-        #z = z / np.sum(z)
-        z = self.LP_extraction_maximize_round(score, z, y, m, tau, lambda_)
-        first_term = np.sum([var[j + M].value() for j in range(N * K)])
-        second_term = np.sum([var[j].value() * score[j] * lambda_ for j in range(M)])
-        print('first_term', first_term - zero * N * K, 'second_term', second_term)
-        return z, pulp.value(p.objective) - zero * N
+        z_values = model.getAttr('X', z)
+        z = []
+        for i in range(self.n_paths):
+            z.append(z_values[i])
+        z = np.array(z)
+        z = self.LP_extraction_maximize_round(score, z, inv_constrs, weight, max_rules, tau, lambda_)
+
+        return z, 0

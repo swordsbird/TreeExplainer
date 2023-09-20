@@ -28,19 +28,20 @@ class ModelUtil():
         new_feature = {}
         feature_pos = {}
         for index, feature in enumerate(self.features):
-            if ' - ' in feature:
-                name, _ = feature.split(' - ')
+            is_cat = False
+            for delimiter in [' - ', '_']:
+                if delimiter not in feature:
+                    continue
+                name, _ = feature.split(delimiter)
+                if len([k for k in self.features if name in k]) == 1:
+                    continue
                 if name not in new_feature:
                     new_feature[name] = {}
                 if feature not in new_feature[name]:
                     new_feature[name][feature] = index
-            elif feature.split('_')[0] in str_keys:
-                name = feature.split('_')[0]
-                if name not in new_feature:
-                    new_feature[name] = {}
-                if feature not in new_feature[name]:
-                    new_feature[name][feature] = index
-            else:
+                is_cat = True
+                break
+            if not is_cat:
                 new_feature[feature] = index
 
         data_table = model.data_table

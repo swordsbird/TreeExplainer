@@ -31,7 +31,10 @@ const default_color = {
 //const stock_color_scheme = ['rgb(43,142,64)', 'rgb(243,171,22)', 'rgb(231,43,50)']
 //const stock_color_scheme = ['rgb(36,140,95)', 'rgb(159,129,87)', 'rgb(231,43,50)']
 // const stock_color_scheme = ['rgb(36,140,95)', 'rgb(243,171,22)', 'rgb(231,43,50)']
-const stock_color_scheme = ['rgb(55,160,47)', 'rgb(255,217,102)', 'rgb(192,0,0)']
+
+
+const stock_color_scheme_real = ['rgb(55,160,47)', 'rgb(255,217,102)', 'rgb(192,0,0)']
+const stock_color_scheme = ['rgb(192,0,0)', 'rgb(55,160,47)', 'rgb(255,217,102)', ]
 //['#828F56', '#397FE6', '#C75242']
 
 const stock_color = {
@@ -84,10 +87,17 @@ const datasets = [{
   label: ["Increase", "Stable", "Decrease"],
   label0: ["Increase", "Stable", "Decrease"],
   color: stock_color,
+}, {
+  name: 'stockep',
+  format: '4',
+  target: 'analystConsensus',
+  label: ["Increase", "Stable", "Decrease"],
+  label0: ["Increase", "Stable", "Decrease"],
+  color: stock_color,
 }]
 
 const state = {
-    server_url: 'http://127.0.0.1:5000',//'http://166.111.81.51:5000',
+    server_url: 'http://127.0.0.1:5000',
     layout: null,
     primary: {
       key: null,
@@ -101,7 +111,7 @@ const state = {
     coverfilter: () => 1,
     highlighted_sample: undefined,
     instances: [],
-    dataset: datasets[5],
+    dataset: datasets[4],
     stack: [],
     dataset_candidates: datasets,
     data_features: [],
@@ -187,7 +197,7 @@ const state = {
       margin: {
         top: 130,
         right: 180,
-        bottom: 40,
+        bottom: 60,
         left: 75,
       },
       width: 1500,

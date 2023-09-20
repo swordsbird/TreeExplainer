@@ -58,7 +58,6 @@ export default new Vuex.Store({
     setDataTable(state, data) {
       const features = data.features
       const values = data.values
-      const shap = data.shap
       state.data_header = features.map(d => ({ text: d, value: d }))
       const start = 10 ** Math.floor(Math.log(values[0].length - 1) / Math.log(10) + 1e-4)
       state.data_table = values[0].map((_, index) => {
@@ -68,13 +67,12 @@ export default new Vuex.Store({
             _index = '0' + _index
           }
         }
-        let ret = {id: `customer #${_index}`, _id: index }
+        let ret = {id: `#${_index}`, _id: index }
         for (let j = 0; j < features.length; ++j) {
           ret[features[j]] = values[j][index]
         }
         return ret
       })
-      state.data_shaps = shap
     },
     updateTooltip(state, attr) {
       for (let key in attr) {
@@ -199,7 +197,13 @@ export default new Vuex.Store({
         features = JSON.parse(JSON.stringify(state.data_features))
         for (let i = 0; i < features.length; ++i) {
           const feature = features[i]
-          feature.count = rules.filter(d => d.conds.filter(cond => cond.key == feature.index).length).length
+          feature.rules = rules.filter(d => d.conds.filter(cond => cond.key == feature.index).length)
+          feature.count = feature.rules.length
+          feature.hist = []
+          for (let j = 0; j < state.dataset.label.length; ++j) {
+            feature.hist.push(0)
+          }
+          feature.rules.forEach(d => feature.hist[d.predict] += 1)
         }
         features = features.sort((a, b) => b.count - a.count)
         fold_info.fold = 1
@@ -238,6 +242,11 @@ export default new Vuex.Store({
           }
         })
       }
+
+      const hist_max = Math.max(...features.filter(d => d.show).map(d => Math.max(...d.hist)))
+      const histScale = d3.scaleLinear()
+        .domain([0, hist_max])
+        .range([0, 25])
       
       const has_pin = features.filter(d => d.pin).length
       if (zoom_level >= state.matrixview.zoom_level) {
@@ -530,7 +539,7 @@ export default new Vuex.Store({
           feature.values.length * state.matrixview.feature.min_width_per_class > width) {
             const min_width = feature.values.length * state.matrixview.feature.min_width_per_class
             const delta = min_width - width
-            left_width -= delta
+            //left_width -= delta
 
           }
         let range = feature.dtype == "category" ? 
@@ -538,7 +547,7 @@ export default new Vuex.Store({
           [Math.min(0, feature.range[0]), feature.range[1]]
 
         // TODO: handle distortion
-        const distorted = feature.dtype != "category" && (
+        const distorted = false && feature.dtype != "category" && (
           feature.q[2] < (feature.range[1] - feature.range[0]) * 0.1 + feature.range[0])
           // || feature.q[2] > (feature.range[1] - feature.range[0]) * 0.9 + feature.range[0])
         const item = {
@@ -550,6 +559,13 @@ export default new Vuex.Store({
           name: feature.name,
           type: feature.dtype,
           count: feature.count,
+          hist: feature.hist.map((d, j) => ({
+            width: 10,
+            height: histScale(d),
+            x: 8 + width / (feature.hist.length + 1) * j,
+            y: 33 - histScale(d) + height,
+            fill: state.dataset.color.color_schema[j],
+          })),
           display_name: feature.display_name,
           hint_change: feature.hint_change,
           delta: feature.hint_change ? 1 : 0,
@@ -679,7 +695,8 @@ export default new Vuex.Store({
               fill: row.fill
             })
           }
-          return {
+
+            return {
             scale: feature.scale,
             elements,
             x: feature.x,
@@ -751,7 +768,7 @@ export default new Vuex.Store({
               d.text += ` <= ${right}`
               code += `(data['${d.name}'] <= ${right})`
             }
-            if (row.rule.missing.indexOf(+d.cond.key) != -1) {
+            if (row.rule.missing && row.rule.missing.indexOf(+d.cond.key) != -1) {
               d.text += ' or missing'
             }
           }
@@ -888,9 +905,8 @@ export default new Vuex.Store({
           key: cond_key,
           range: rule.range[cond_key],
         })).filter(d => state.data_features[d.key].dtype != 'number'
-        //|| d.range[0] > state.data_features[d.key].range[0]
-        //|| d.range[1] < state.data_features[d.key].range[1]
-        )
+        || d.range[0] > state.data_features[d.key].range[0]
+        || d.range[1] < state.data_features[d.key].range[1])
       }))//.filter(d => d.fidelity > 0.6)
       if (state.matrixview.max_level == -1) {
         state.matrixview.max_level = Math.max(...raw_rules.map(d => d.level))

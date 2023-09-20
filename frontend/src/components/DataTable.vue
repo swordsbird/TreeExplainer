@@ -36,7 +36,7 @@ export default {
   }),
   computed: {
     ...mapGetters(['filtered_data', 'zoom_level']),
-    ...mapState(['debug', 'dataset', 'summary', 'highlighted_sample', 'covered_samples', 'crossfilter', 'data_shaps', 'data_table'])
+    ...mapState(['debug', 'dataset', 'summary', 'highlighted_sample', 'covered_samples', 'crossfilter', 'data_table'])
   },
   watch: {
     covered_samples() { this.renderTable() },
@@ -104,18 +104,8 @@ export default {
         .cellRender(function (rect, fill, isHeader, isFixedRow, isFixedCol) {
           if (isHeader) return false
           if (isFixedCol) return false
-          if (!self.showShaps) return false
           rect.attr('fill', d => {
             if (d.colIndex < 3) return 'white'
-            const shapVal = self.data_shaps[this._data[d.rowIndex]._id][d.colIndex - 3]
-            if (shapVal !== undefined) {
-              const baseColor = 'red'
-              const color = getWeightedColor(baseColor, shapVal)
-              if (isFixedRow) {
-                // TODO: set style for the fixed row
-              }
-              return color
-            }
             return 'white'
           })
           return true
@@ -123,21 +113,7 @@ export default {
         .highlightRender(function (r) {
           r.attr('fill', item => {
             const { d, hl } = item
-            if (self.showShaps) {
-            if (d.colIndex < 3) return 'white'
-              const shapVal = self.data_shaps[this._data[d.rowIndex]._id][d.colIndex - 3]
-              let color = 'white'
-              if (shapVal !== undefined) {
-                const baseColor = 'red'
-                color = getWeightedColor(baseColor, shapVal)
-              }
-              if (hl) {
-                color = d3.interpolateLab('grey', color)(0.8)
-              }
-              return color
-            } else {
-              return hl ? d3.interpolateLab('grey', 'white')(0.8) : 'white'
-            }
+            return hl ? d3.interpolateLab('grey', 'white')(0.8) : 'white'
           })
         })
         .data(reordered_data)
@@ -149,7 +125,6 @@ export default {
       this.is_rendering = 0
     },
     toggleShowShaps () {
-      this.showShaps = !this.showShaps
       if (this.instance) {
         this.instance.refresh()
       }

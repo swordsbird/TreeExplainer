@@ -2,7 +2,7 @@
 from os import path
 from copy import deepcopy
 import numpy as np
-import random
+from scalable.rule_query import Table
 
 def visit_boosting_tree(tree, path = {}, missing = []):
     if 'decision_type' not in tree:
@@ -73,13 +73,23 @@ def visit_decision_tree(tree, index = 0, path = {}):
 
 def assign_distribution(paths, data):
     X, y = data
-    for path in paths:
-        ans = 2 * y - 1
-        m = path['range']
-        for key in m:
-            ans = ans * (X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1])
-        pos = (ans == 1).sum()
-        neg = (ans == -1).sum()
+    table = Table()
+    for i in range(X.shape[1]):
+        table.add(X[:, i])
+
+    for p in paths:
+        m = p.get('range')
+        missing = p.get('missing', [])
+        conds = [(key, m[key], key in missing) for key in m]
+        samples = table.query(conds)
+        
+        pos = 0
+        neg = 0
+        for i in samples:
+            if y[i] == 0:
+                neg += 1
+            else:
+                pos += 1
         path['distribution'] = [neg, pos]
 
 def assign_samples(paths, data):
@@ -90,14 +100,12 @@ def assign_samples(paths, data):
         for key in m:
             ans = ans * (X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1])
         if ans.sum() == 0:
-            # path['sample'] = []
             path['sample_id'] = []
             path['distribution'] = [0, 0]
             path['output'] = 0
             path['coverage'] = 0
         else:
             idx = np.flatnonzero(ans)
-            # path['sample'] = (np.abs(ans)).tolist()
             path['sample_id'] = idx.tolist()
             pos = (ans == 1).sum()
             neg = (ans == -1).sum()
@@ -120,21 +128,16 @@ def assign_samples_lgbm(paths, data, model):
             for p in tpaths:
                 p['value'] -= min_value
                 
+    table = Table()
+    for i in range(X.shape[1]):
+        table.add(X[:, i])
     for i, path in enumerate(paths):
-        ans = np.ones(len(y))
-        m = path['range']
-        new_range = {}
-        for key in m:
-            if type(key) == int:
-                if key in path['missing']:
-                    ans = ans * ((X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1]) + np.isnan(X[:, int(key)].astype(float)))
-                else:
-                    ans = ans * (X[:, int(key)] >= m[key][0]) * (X[:, int(key)] < m[key][1])
-                new_range[key] = m[key]
-        idx = np.flatnonzero(ans)
-        # path['sample'] = (np.abs(ans)).tolist()
-        path['sample_id'] = idx.tolist()
-        ans = y[idx.tolist()]
+        m = path.get('range')
+        missing = path.get('missing', [])
+        conds = [(key, m[key], key in missing) for key in m]
+        idx = table.query(conds)
+        path['sample_id'] = idx
+        ans = y[idx]
         path['distribution'] = [(ans == c).sum() for c in model.classes_]
         if len(model.classes_) == 2:
             path['output'] = 0 if path['value'] < 0 else 1

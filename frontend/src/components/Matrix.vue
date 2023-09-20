@@ -195,7 +195,7 @@ export default {
         status_container.selectAll('*').remove()
         if (self.layout.fold_info.fold) {
           const left_button = status_container.append('g')
-            .attr('transform', `translate(${layout.fold_info.left_x}, 5)`)
+            .attr('transform', `translate(${layout.fold_info.left_x}, 35)`)
             
           if (layout.fold_info.page) {
             left_button.append('use')
@@ -226,7 +226,7 @@ export default {
           }
 
           const right_button = status_container.append('g')
-            .attr('transform', `translate(${layout.fold_info.right_x}, 5)`)
+            .attr('transform', `translate(${layout.fold_info.right_x}, 35)`)
             
           if (layout.fold_info.next) {
             right_button.append('use')
@@ -258,7 +258,7 @@ export default {
         }
 
         const count_btn = status_container.append('g')
-          .attr('transform', `translate(0,5)`)
+          .attr('transform', `translate(0,35)`)
           .on('mouseover', function(){
             d3.select(this).select('rect.background').attr('fill-opacity', .8).attr('stroke-width', 1)
               .attr('stroke', 'black')
@@ -271,7 +271,7 @@ export default {
 
         count_btn.append('rect')
           .attr('class', 'background')
-          .attr('y', -1)
+          .attr('y', -3)
           .attr('x', 0)
           .attr('width', 98)
           .attr('height', 20)
@@ -284,7 +284,7 @@ export default {
           status_container.append('rect')
             .attr('class', 'background')
             .attr('y', 4)
-            .attr('height', 20)
+            .attr('height', 50)
             .attr('stroke', matrixview.cell.stroke_color)
             .attr('stroke-width', matrixview.cell.stroke_width)
             .attr('fill', 'none')
@@ -294,7 +294,7 @@ export default {
           status_container.append('rect')
             .attr('class', 'background')
             .attr('y', 4)
-            .attr('height', 20)
+            .attr('height', 50)
             .attr('stroke', matrixview.cell.stroke_color)
             .attr('stroke-width', matrixview.cell.stroke_width)
             .attr('fill', 'none')
@@ -304,13 +304,22 @@ export default {
           status_container.append('rect')
             .attr('class', 'background')
             .attr('y', 4)
-            .attr('height', 20)
+            .attr('height', 50)
             .attr('stroke', matrixview.cell.stroke_color)
             .attr('stroke-width', matrixview.cell.stroke_width)
             .attr('fill', 'none')
             .attr('x', layout.main_start_x)
             .attr('width', layout.main_width)
         }
+        status_container.append('line')
+          .attr('class', 'background')
+          .attr('y1', 34)
+          .attr('y2', 34)
+          .attr('stroke', matrixview.cell.stroke_color)
+          .attr('stroke-width', matrixview.cell.stroke_width)
+          .attr('fill', 'none')
+          .attr('x1', layout.main_start_x)
+          .attr('x2', layout.main_start_x + layout.main_width)
 /*
         count_btn.append('path')
           .attr('d', "M41 288h238c21.4 0 32.1 25.9 17 41L177 448c-9.4 9.4-24.6 9.4-33.9 0L24 329c-15.1-15.1-4.4-41 17-41zm255-105L177 64c-9.4-9.4-24.6-9.4-33.9 0L24 183c-15.1 15.1-4.4 41 17 41h238c21.4 0 32.1-25.9 17-41z")
@@ -534,11 +543,11 @@ export default {
         }
         
         col.select('text.label')
-          .attr('transform', `rotate(-35)`)
+          .attr('transform', d => d.show_axis && d.type == 'category' ? '' : `rotate(-35)`)
           .attr('font-size', `${self.matrixview.font_size}px`)
           .attr('font-family', 'Arial')
-          .attr('dx', d => d.show_axis ? 40 : 30)
-          .attr('dy', 16 - header_offset.y)
+          .attr('dx', d => d.show_axis ? (40 + (d.type == 'category' ? header_offset.x : 0)) : 30)
+          .attr('dy', d => d.show_axis && d.type == 'category' ? -header_offset.x + 5 : 16 - header_offset.y)
           .text(d => {
             let prefix = ''
             for (let i = 0; i < self.matrixview.order_keys.length; ++i) {
@@ -650,7 +659,7 @@ export default {
         col.select('rect.background')
           .attr('stroke', matrixview.cell.stroke_color)
           .attr('stroke-width', matrixview.cell.stroke_width)
-          .attr('height', d => d.height + 4)
+          .attr('height', d => d.height + 34)
           .attr('fill', 'none')
 
         col.select('rect.background')
@@ -660,9 +669,21 @@ export default {
         col.select('text.count')
           .attr('font-size', `${self.matrixview.font_size}px`)
           .attr('font-family', 'Arial')
-          .attr('dx', d => 5)
-          .attr('dy', d => d.height + 20)
+          .attr('dx', d => 10)
+          .attr('dy', d => d.height + 50)
           .text(d => d.count > 0 ? d.count : '')
+
+        col.selectAll('.bar').remove()
+
+        col.selectAll('.bar')
+          .data(d => d.hist || []).enter()
+          .append('rect')
+          .attr('class', 'bar')
+          .attr('height', d => d.height)
+          .attr('width', d => d.width)
+          .attr('x', d => d.x)
+          .attr('y', d => d.y)
+          .attr('fill', d => d.fill)
         
         col.filter(d => !d.show_axis && d.type == 'number').each(function(d){
           d3.select(this).select('g.axis').selectAll('*').remove()

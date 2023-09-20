@@ -6,6 +6,11 @@ data_setting = {}
 
 # Gender,Age,Debt,Married,BankCustomer,Industry,Ethnicity,YearsEmployed,PriorDefault,Employed,CreditScore,DriversLicense,Citizen,ZipCode,Income,Approved
 
+
+data_setting['stock'] = {
+    'psRatioTTM': {'scale': 'linear'},
+}
+
 data_encoding['stock'] = {
     'industry': ['Biotechnology',
                  'Oil & Gas E&P',

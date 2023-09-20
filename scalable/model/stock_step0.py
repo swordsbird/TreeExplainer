@@ -9,6 +9,7 @@ from scalable.model.data_encoding import stock_encoding
 import numpy as np
 from scalable.config import data_path
 from sklearn.metrics import confusion_matrix
+from scalable.model.data_encoding import stock_encoding
 
 random_state = 42
 
@@ -16,11 +17,11 @@ class Model(BaseModel):
     def __init__(self, model_name):
         super().__init__()
         self.data_name = 'stock'
-        self.data_path = os.path.join(data_path, 'case2_stock/step0.csv')
+        self.data_path = os.path.join(data_path, 'case2_stock/1year_small.csv')
         self.data_table = pd.read_csv(self.data_path)
         self.target = 'label'
         self.output_labels = ["decrease", "stable", "increase"]
-        self.model_id = 100
+        self.model_id = -1
 
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
@@ -31,15 +32,7 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 330,
-                'learning_rate': 0.0328801839671385,
-                'max_depth': 6,
-                'lambda_l1': 5.759600178167858,
-                'lambda_l2': 3.039327069585008,
-                'feature_fraction': 0.7484648394881472,
-                'bagging_fraction': 0.8721155269300441,
-                'bagging_freq': 7,
-                'min_child_samples': 192,
+                'n_estimators': 430, 'learning_rate': 0.05599061280807796, 'max_depth': 6, 'feature_fraction': 0.7082156453527435, 'bagging_fraction': 0.8774051099368454, 'bagging_freq': 4, 'min_child_samples': 115,
                 'class_weight': 'balanced',
                 #'random_state': random_state,
                 'verbosity': -1,
@@ -49,8 +42,19 @@ class Model(BaseModel):
         data_table = self.data_table.drop('ticker', axis=1)
         data_table = data_table.drop('newPrice', axis = 1)
         data_table = data_table.drop('currentPrice', axis = 1)
+
         
         X = data_table.drop(self.target, axis=1)
+
+        features = X.columns.tolist()
+        for key in stock_encoding:
+            index = 0
+            for i in range(len(features)):
+                if key in features[i]:
+                    features[i] = key + '_' + stock_encoding[key][index]
+                    index += 1
+        X = X[features]
+
         y = data_table[self.target]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
@@ -62,7 +66,7 @@ class Model(BaseModel):
         self.y_test = y_test.values
         self.X = X.drop('rating', axis = 1).values
         self.y = y.values
-        self.data_table = X
+        self.data_table = data_table.drop('rating', axis = 1)
 
         self.check_columns(self.data_table, self.target)
 

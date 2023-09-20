@@ -18,12 +18,10 @@ def generate_model_paths(dataset, model_name):
 
     feature_importance = []
 
-    for i in range(len(model.data_table.columns)):
+    for i in range(len(model.features)):
         j = modelutil.feature_pos[i][1]
-        feature_importance.append((model.data_table.columns[j], res.w[i]))
+        feature_importance.append((model.features[j], res.w[i]))
     feature_importance = sorted(feature_importance, key = lambda x: -x[1])
-    #for it in feature_importance:
-    #    print(it)
 
     for i, val in enumerate(score):
         model.paths[i]['score'] = val
@@ -95,10 +93,9 @@ def generate_hierarchy(dataset, model_name, n = 80, xi = -1, lambda_ = -1, n_fol
     print('lambda', lambda_)
 
     alpha = model.parameters['n_estimators'] * n / len(paths)
-    ex = Extractor(paths, model.X_train, model.clf.predict(model.X_train))
-    w, _, _, _ = ex.extract(n, xi * alpha, lambda_)
+    ex = Extractor(paths, model.X_train, model.clf.predict(model.X_train))#, greedy = True)
+    w, _, _, _ = ex.extract(n, xi * alpha, lambda_, class_weight='balanced')
     [idx] = np.nonzero(w)
-    print('selected index', idx)
     accuracy_test = ex.evaluate(w, model.X_test, model.y_test)
     fidelity_test = ex.evaluate(w, model.X_test, model.clf.predict(model.X_test))
 
@@ -124,26 +121,24 @@ def post_process(dataset, model_name, model, paths, level_info, selected_idx):
     new_feature = {}
     features = [feature for feature in model.data_table.columns if feature != model.target]
     for index, feature in enumerate(model.features):
-        if ' - ' in feature:
-            name, _ = feature.split(' - ')
+        is_cat = False
+        for delimiter in [' - ', '_']:
+            if delimiter not in feature:
+                continue
+            name, _ = feature.split(delimiter)
+            if len([k for k in model.features if name in k]) == 1:
+                continue
             if name not in new_feature:
                 new_feature[name] = {}
             if feature not in new_feature[name]:
                 new_feature[name][feature] = index
-        elif feature.split('_')[0] in str_keys:
-            name = feature.split('_')[0]
-            if name not in new_feature:
-                new_feature[name] = {}
-            if feature not in new_feature[name]:
-                new_feature[name][feature] = index
-        else:
+            is_cat = True
+            break
+        if not is_cat:
             new_feature[feature] = index
 
     output_data = {}
     current_encoding = data_encoding.get(dataset, {})
-    # print(current_encoding)
-    # print('sector', new_feature['sector'])
-    # print('exchange', new_feature['exchange'])
 
     if dataset == 'german':
         features = []
@@ -284,8 +279,13 @@ def post_process(dataset, model_name, model, paths, level_info, selected_idx):
                     x = x[~np.isnan(x)]
                     x.sort()
                     n = len(x)
-                    qmin, qmax = x[0], x[-1]
-                    q5, q25, q50, q75, q95 = x[n * 5 // 100], x[n * 25 // 100], x[n * 50 // 100], x[n * 75 // 100], x[n * 95 // 100]
+                    if n == 0:
+                        qmin = 0
+                        qmax = 1
+                        q5 = q25 = q50 = q75 = q95 = 0
+                    else:
+                        qmin, qmax = x[0], x[-1]
+                        q5, q25, q50, q75, q95 = x[n * 5 // 100], x[n * 25 // 100], x[n * 50 // 100], x[n * 75 // 100], x[n * 95 // 100]
                     features.append({
                         "name": key,
                         "quantile": { "5": q5, "25": q25, "50": q50, "75": q75, "95": q95 },
@@ -397,10 +397,10 @@ if __name__ == '__main__':
     model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.05, lambda_=0.1)
     data = post_process(dataset, model_name, model, paths, level_info, idx)
     '''
-    dataset = 'stock_step0'
+    dataset = 'stock_step1'
     model_name = 'lightgbm'
-    model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.1, lambda_=0.1)
+    model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.1, lambda_=0.2)
     data = post_process(dataset, model_name, model, paths, level_info, idx)
 
     import pickle
-    pickle.dump(data, open('./output/dump/stock_step0.pkl', 'wb'))
+    pickle.dump(data, open('./output/dump/stock_step1_v1.pkl', 'wb'))
