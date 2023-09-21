@@ -21,7 +21,7 @@ class Model(BaseModel):
         self.data_table = pd.read_csv(self.data_path)
         self.target = 'label'
         self.output_labels = ["decrease", "stable", "increase"]
-        self.model_id = 101
+        self.model_id = 106
 
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
@@ -82,13 +82,14 @@ if __name__ == '__main__':
     conf_mat = confusion_matrix(model.y_test, y_pred)
     idx = np.zeros(len(model.X_test)) > 0
     ratios = []
-    for i in np.argsort(y_pred_prob[:, 2])[::-1][:20]:
+    for i in np.argsort(y_pred_prob[:, 1])[::-1][:20]:
         ratios.append(model.test_rating[i])
 
     print(np.mean(ratios))
     print(ratios)
         
     accuracys = []
+    model.output_labels = model.clf.classes_
     num_classes = len(model.output_labels)
     for i in range(num_classes):
         accuracy = conf_mat[i, i] / conf_mat[i].sum()
