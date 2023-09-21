@@ -260,14 +260,14 @@ class DatasetLoader():
         loader = DataLoader(data, info, 'credit', target, targets)
         loader.set_data_table(data_table)
         data_loader['credit_new'] = loader
-        '''
-
         
         data_table = pd.read_csv('../data/case1_credit_card/step0.csv')
         info = pickle.load(open('../output/dump/credit_v62.pkl', 'rb'))
         loader = DataLoader(info, 'credit', 'Approved')
         loader.set_data_table(data_table)
         data_loader['credit'] = loader
+        '''
+
 
         data_table = pd.read_csv('../data/case2_stock/1year_small_raw.csv')
         info = pickle.load(open('../output/dump/stock_step0_v1.pkl', 'rb'))
