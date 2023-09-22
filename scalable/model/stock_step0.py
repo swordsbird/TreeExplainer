@@ -17,7 +17,7 @@ class Model(BaseModel):
     def __init__(self, model_name):
         super().__init__()
         self.data_name = 'stock'
-        self.data_path = os.path.join(data_path, 'case2_stock/step/1year.csv')
+        self.data_path = os.path.join(data_path, 'case2_stock/1year_small.csv')
         self.data_table = pd.read_csv(self.data_path)
         self.target = 'label'
         self.output_labels = ["decrease", "stable", "increase"]

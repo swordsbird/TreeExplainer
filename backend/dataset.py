@@ -171,6 +171,7 @@ class DataLoader():
         return self.info['model_info']
     
     def set_data_table(self, data):
+        print('data length', len(self.model.y), len(data))
         if len(self.model.y) == len(data):
             pred_y = self.model.clf.predict(self.model.X)
         else:
@@ -227,21 +228,6 @@ class DataLoader():
 
         data = data.fillna(-1)
         self.data_table = data
-        
-        self.sample_feature_importance = [np.zeros(len(self.features)) for i in range(len(pred_y))]
-        for path in self.paths:
-            d = np.zeros(len(self.features))
-            for k in path['range']:
-                d[k] += 1
-            for i in path['sample_id']:
-                self.sample_feature_importance[i] += d
-        max_value = 0
-        for i in range(len(self.sample_feature_importance)):
-            value = self.sample_feature_importance[i].max()
-            if value > max_value:
-                max_value = value
-        for i in range(len(self.sample_feature_importance)):
-            self.sample_feature_importance[i] /= max_value
 
 class DatasetLoader():
     def __init__(self):
@@ -260,13 +246,6 @@ class DatasetLoader():
         loader = DataLoader(data, info, 'credit', target, targets)
         loader.set_data_table(data_table)
         data_loader['credit_new'] = loader
-        
-        data_table = pd.read_csv('../data/case1_credit_card/step0.csv')
-        info = pickle.load(open('../output/dump/credit_v62.pkl', 'rb'))
-        loader = DataLoader(info, 'credit', 'Approved')
-        loader.set_data_table(data_table)
-        data_loader['credit'] = loader
-        '''
 
 
         data_table = pd.read_csv('../data/case2_stock/1year_small_raw.csv')
@@ -274,6 +253,14 @@ class DatasetLoader():
         loader = DataLoader(info, 'stock', 'label')
         loader.set_data_table(data_table)
         data_loader['stock'] = loader
+        '''
+
+        data_table = pd.read_csv('../data/case2_stock/step/3year_raw.csv')
+        info = pickle.load(open('../output/dump/stock_step1_6.pkl', 'rb'))
+        loader = DataLoader(info, 'stock', 'label')
+        loader.set_data_table(data_table)
+        data_loader['stock'] = loader
+
 
         '''
         data = pd.read_csv('../data/stock_ep.csv')

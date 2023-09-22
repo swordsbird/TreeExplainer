@@ -5,6 +5,7 @@ from .german_credit import Model as GermanModel
 from .wine import Model as WineModel
 from .stock_step0 import Model as StockModelStep0
 from .stock_step1 import Model as StockModelStep1
+from .stock_step2 import Model as StockModelStep2
 from .stock import Model as StockModel
 from .stock2 import Model as StockModel2
 from .stock_ep import Model as StockModelEp
@@ -22,6 +23,8 @@ def get_model(data_name, model_name, tag=''):
         return StockModelStep0(model_name)
     elif data_name == 'stock_step1':
         return StockModelStep1(model_name)
+    elif data_name == 'stock_step2':
+        return StockModelStep2(model_name)
     elif data_name == 'stock':
         return StockModel(model_name)
     elif data_name == 'stockep':
