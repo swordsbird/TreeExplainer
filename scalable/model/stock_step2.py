@@ -23,7 +23,7 @@ class Model(BaseModel):
         self.data_table = pd.read_csv(self.data_path)
         self.target = 'label'
         self.output_labels = ["decrease", "stable", "increase"]
-        self.model_id = 106
+        self.model_id = 108
 
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
@@ -35,7 +35,7 @@ class Model(BaseModel):
         else:
             self.parameters = {
 #                'n_estimators': 430, 'learning_rate': 0.05599061280807796, 'max_depth': 6, 'feature_fraction': 0.7082156453527435, 'bagging_fraction': 0.8774051099368454, 'bagging_freq': 4, 'min_child_samples': 115,
-                 'n_estimators': 490, 'learning_rate': 0.12774383081302004, 'max_depth': 8, 'feature_fraction': 0.7824151513926787, 'bagging_fraction': 0.9185752651664699, 'bagging_freq': 3, 'min_child_samples': 295,
+                'n_estimators': 490, 'learning_rate': 0.09639866565422027, 'max_depth': 8, 'feature_fraction': 0.49881480588365473, 'bagging_fraction': 0.9990501712986751, 'bagging_freq': 4, 'min_child_samples': 300,
                 'class_weight': 'balanced',
                 #'random_state': random_state,
                 'verbosity': -1,
