@@ -33,15 +33,15 @@ if __name__ == '__main__':
     def objective(trial, X_train, y_train, X_test, y_test):
         # 后面填充
         param_grid = {
-            "n_estimators": trial.suggest_int("n_estimators", 50, 500, step=20),
-            "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.3),
-            "max_depth": trial.suggest_int("max_depth", 3, 8),
+            "n_estimators": trial.suggest_int("n_estimators", 150, 500, step=10),
+            "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.2),
+            "max_depth": trial.suggest_int("max_depth", 4, 8),
             #"lambda_l1": trial.suggest_float("lambda_l1", 1e-8, 10.0),
             #"lambda_l2": trial.suggest_float("lambda_l2", 1e-8, 10.0),
-            "feature_fraction": trial.suggest_float("feature_fraction", 0.1, 1.0),
-            "bagging_fraction": trial.suggest_float("bagging_fraction", 0.1, 1.0),
+            "feature_fraction": trial.suggest_float("feature_fraction", 0.3, 1.0),
+            "bagging_fraction": trial.suggest_float("bagging_fraction", 0.3, 1.0),
             "bagging_freq": trial.suggest_int("bagging_freq", 1, 9),
-            "min_child_samples": trial.suggest_int("min_child_samples", 30, 300),
+            "min_child_samples": trial.suggest_int("min_child_samples", 30, 500),
         }
 
         model = LGBMClassifier(**param_grid, verbose=-1, class_weight = 'balanced')
@@ -64,6 +64,6 @@ if __name__ == '__main__':
 
     study = optuna.create_study(direction="maximize", study_name="LGBM Classifier")
     func = lambda trial: objective(trial, X_train, y_train, X_test, y_test)
-    study.optimize(func, n_trials=1500)
+    study.optimize(func, n_trials=300)
     
     print(study.best_params)
