@@ -23,7 +23,7 @@ class Model(BaseModel):
         self.data_table = pd.read_csv(self.data_path)
         self.target = 'label'
         self.output_labels = ["decrease", "stable", "increase"]
-        self.model_id = 108
+        self.model_id = 110
 
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
@@ -40,7 +40,7 @@ class Model(BaseModel):
                 #'random_state': random_state,
                 'verbosity': -1,
             }
-    
+
     def init_data(self):
         data_table = self.data_table.drop('ticker', axis=1)
         data_table = data_table.drop('newPrice', axis = 1)
@@ -60,7 +60,7 @@ class Model(BaseModel):
 
         y = data_table[self.target]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        
+
         self.test_rating = X_test['rating'].values
         self.train_rating = X_train['rating'].values
         self.X_train = X_train.drop('rating', axis = 1).values
@@ -90,7 +90,7 @@ if __name__ == '__main__':
 
     print(np.mean(ratios))
     print(ratios)
-        
+
     accuracys = []
     model.output_labels = model.clf.classes_
     num_classes = len(model.output_labels)

@@ -111,7 +111,7 @@ def generate_hierarchy(dataset, model_name, n = 80, xi = -1, lambda_ = -1, n_fol
     print('avg_score', avg_score)
     print('fidelity_test', fidelity_test)
     print('accuracy_test', accuracy_test)
-    
+
     return model, paths, level_info, idx
 
 str_keys = ['industry', 'country', 'exchange', 'sector', 'previousConsensus']
@@ -362,7 +362,7 @@ def post_process(dataset, model_name, model, paths, level_info, selected_idx):
 
         for i in idx:
             paths[i]['represent'] = True
-            
+
         output_data = {
             'paths': paths,
             'features': features,
@@ -397,10 +397,10 @@ if __name__ == '__main__':
     model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.05, lambda_=0.1)
     data = post_process(dataset, model_name, model, paths, level_info, idx)
     '''
-    dataset = 'stock_step1'
+    dataset = 'stock_step2'
     model_name = 'lightgbm'
-    model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.1, lambda_=0.2)
+    model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.6, lambda_=0.2)
     data = post_process(dataset, model_name, model, paths, level_info, idx)
 
     import pickle
-    pickle.dump(data, open('./output/dump/stock_step1_v1.pkl', 'wb'))
+    pickle.dump(data, open('./output/dump/stock_step2_6.pkl', 'wb'))

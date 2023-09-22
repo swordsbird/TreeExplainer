@@ -1,6 +1,6 @@
 import os
 
-project_path = '/home/lizhen/scalable_matrix'
+project_path = '/home/lizhen/projects/TreeExplainer'
 data_path = os.path.join(project_path, 'data')
 cache_path = os.path.join(project_path, 'cache')
 output_path = os.path.join(project_path, 'output')
