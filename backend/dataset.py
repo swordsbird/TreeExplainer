@@ -171,7 +171,7 @@ class DataLoader():
         return self.info['model_info']
     
     def set_data_table(self, data):
-        print('data length', len(self.model.y), len(data))
+        # print('data length', len(self.model.y), len(data))
         if len(self.model.y) == len(data):
             pred_y = self.model.clf.predict(self.model.X)
         else:
@@ -255,8 +255,8 @@ class DatasetLoader():
         data_loader['stock'] = loader
         '''
 
-        data_table = pd.read_csv('../data/case2_stock/step/3year_raw.csv')
-        info = pickle.load(open('../output/dump/stock_step1_6.pkl', 'rb'))
+        data_table = pd.read_csv('../data/case2_stock/step/3year_raw_step2.csv')
+        info = pickle.load(open('../output/dump/stock_step2_6.pkl', 'rb'))
         loader = DataLoader(info, 'stock', 'label')
         loader.set_data_table(data_table)
         data_loader['stock'] = loader
