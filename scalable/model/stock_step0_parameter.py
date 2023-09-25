@@ -6,7 +6,7 @@ sys.path.append('.')
 import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix
-from scalable.model.credit_card_step1 import Model
+from scalable.model.stock_step0 import Model
 
 if __name__ == '__main__':
     model = Model('lightgbm')
@@ -25,18 +25,23 @@ if __name__ == '__main__':
     X_test = model.X_test
     y_test = model.y_test
 
+    print('X_train', X_train.shape)
+    print('y_train', y_train.shape)
+    print('X_test', X_test.shape)
+    print('y_test', y_test.shape)
+
     def objective(trial, X_train, y_train, X_test, y_test):
         # 后面填充
         param_grid = {
-            "n_estimators": trial.suggest_int("n_estimators", 50, 500, step=20),
-            "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.3),
-            "max_depth": trial.suggest_int("max_depth", 3, 6),
+            "n_estimators": trial.suggest_int("n_estimators", 150, 600, step=10),
+            "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.2),
+            "max_depth": trial.suggest_int("max_depth", 5, 10),
             #"lambda_l1": trial.suggest_float("lambda_l1", 1e-8, 10.0),
             #"lambda_l2": trial.suggest_float("lambda_l2", 1e-8, 10.0),
-            "feature_fraction": trial.suggest_float("feature_fraction", 0.1, 1.0),
-            "bagging_fraction": trial.suggest_float("bagging_fraction", 0.1, 1.0),
+            "feature_fraction": trial.suggest_float("feature_fraction", 0.3, 1.0),
+            "bagging_fraction": trial.suggest_float("bagging_fraction", 0.3, 1.0),
             "bagging_freq": trial.suggest_int("bagging_freq", 1, 9),
-            "min_child_samples": trial.suggest_int("min_child_samples", 10, 200),
+            "min_child_samples": trial.suggest_int("min_child_samples", 50, 1000),
         }
 
         model = LGBMClassifier(**param_grid, verbose=-1, class_weight = 'balanced')
@@ -45,15 +50,20 @@ if __name__ == '__main__':
         y_pred = model.predict(X_test)
         conf_mat = confusion_matrix(y_test, y_pred)
         accuracys = []
+
+        tot = 0
         for i in range(model.n_classes_):
             accuracy = conf_mat[i, i] / conf_mat[i].sum()
             accuracys.append(accuracy)
-        train_accuracy = accuracy_score(y_test, y_pred)    
+            print(f'Accuracy on {model.classes_[i]}: {accuracy}')
+            tot += conf_mat[i, i]
+        tot /= len(y_pred)
+        print(f'Accuracy: {tot}')
         
-        return np.mean(accuracys)
+        return tot#(accuracys[0] + accuracys[1] + accuracys[2] * 2) / 4
 
     study = optuna.create_study(direction="maximize", study_name="LGBM Classifier")
     func = lambda trial: objective(trial, X_train, y_train, X_test, y_test)
-    study.optimize(func, n_trials=100)
+    study.optimize(func, n_trials=300)
     
     print(study.best_params)

@@ -17,8 +17,12 @@ class Model(BaseModel):
     def __init__(self, model_name):
         super().__init__()
         self.data_name = 'stock'
-        self.data_path = os.path.join(data_path, 'case2_stock/1year_small.csv')
+        self.data_path = os.path.join(data_path, 'case2_stock/step/3year.csv')
         self.data_table = pd.read_csv(self.data_path)
+        
+        self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month.csv')
+        self.test_data_table = pd.read_csv(self.test_data_path)
+
         self.target = 'label'
         self.output_labels = ["decrease", "stable", "increase"]
         self.model_id = 105
@@ -33,9 +37,7 @@ class Model(BaseModel):
         else:
             self.parameters = {
                 'n_estimators': 430, 'learning_rate': 0.05599061280807796, 'max_depth': 6, 'feature_fraction': 0.7082156453527435, 'bagging_fraction': 0.8774051099368454, 'bagging_freq': 4, 'min_child_samples': 115,
-                #'n_estimators': 370, 'learning_rate': 0.05316362156247843, 'max_depth': 6, 'feature_fraction': 0.8731725047139053, 'bagging_fraction': 0.8450537283888565, 'bagging_freq': 2, 'min_child_samples': 183,
                 'class_weight': 'balanced',
-                #'random_state': random_state,
                 'verbosity': -1,
             }
     
@@ -44,28 +46,29 @@ class Model(BaseModel):
         data_table = data_table.drop('newPrice', axis = 1)
         data_table = data_table.drop('currentPrice', axis = 1)
 
-        X = data_table.drop(self.target, axis=1)
+        features = data_table.columns.tolist()
+        features = [k for k in features if k != 'rating' and k != 'label']
 
-        features = X.columns.tolist()
         for key in stock_encoding:
             index = 0
             for i in range(len(features)):
                 if key in features[i]:
                     features[i] = key + '_' + stock_encoding[key][index]
                     index += 1
-        X = X[features]
 
-        y = data_table[self.target]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        
-        self.test_rating = X_test['rating'].values
-        self.train_rating = X_train['rating'].values
-        self.X_train = X_train.drop('rating', axis = 1).values
+        X_train = data_table[features]
+        y_train = data_table[self.target]
+        X_test = self.test_data_table[features]
+        y_test = self.test_data_table[self.target]
+
+        self.test_rating = data_table['rating'].values
+        self.train_rating = self.test_data_table['rating'].values
+        self.X_train = X_train.values
         self.y_train = y_train.values
-        self.X_test = X_test.drop('rating', axis = 1).values
+        self.X_test = X_test.values
         self.y_test = y_test.values
-        self.X = X.drop('rating', axis = 1).values
-        self.y = y.values
+        self.X = X_train.values
+        self.y = y_train.values
         self.data_table = data_table.drop('rating', axis = 1)
 
         self.check_columns(self.data_table, self.target)
