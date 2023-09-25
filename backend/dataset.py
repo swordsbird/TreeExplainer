@@ -255,8 +255,8 @@ class DatasetLoader():
         data_loader['stock'] = loader
         '''
 
-        data_table = pd.read_csv('../data/case2_stock/step/3year_raw_step2.csv')
-        info = pickle.load(open('../output/dump/stock_step2_4.pkl', 'rb'))
+        data_table = pd.read_csv('../data/case2_stock/step/3year.csv')
+        info = pickle.load(open('../output/dump/stock_step0.pkl', 'rb'))
         loader = DataLoader(info, 'stock', 'label')
         loader.set_data_table(data_table)
         data_loader['stock'] = loader
