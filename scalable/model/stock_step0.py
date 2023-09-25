@@ -36,7 +36,10 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 590, 'learning_rate': 0.19875974633292312, 'max_depth': 9, 'feature_fraction': 0.6070539063213604, 'bagging_fraction': 0.9027529665840346, 'bagging_freq': 3, 'min_child_samples': 78,
+                'n_estimators': 600, 'learning_rate': 0.1166128064827033,
+                'max_depth': 10, 'feature_fraction': 0.6500598981875909,
+                'bagging_fraction': 0.8887889294520509, 'bagging_freq': 3,
+                'min_child_samples': 334,
                 'class_weight': 'balanced',
                 'verbosity': -1,
             }
@@ -61,8 +64,8 @@ class Model(BaseModel):
         X_test = self.test_data_table[features]
         y_test = self.test_data_table[self.target]
 
-        self.test_rating = data_table['rating'].values
-        self.train_rating = self.test_data_table['rating'].values
+        self.train_rating = data_table['rating'].values
+        self.test_rating = self.test_data_table['rating'].values
         self.X_train = X_train.values
         self.y_train = y_train.values
         self.X_test = X_test.values
