@@ -97,7 +97,7 @@ const datasets = [{
 }]
 
 const state = {
-    server_url: 'http://127.0.0.1:5000',
+    server_url: 'http://166.111.81.51:5000',
     layout: null,
     primary: {
       key: null,
