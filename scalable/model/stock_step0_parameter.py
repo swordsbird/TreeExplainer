@@ -33,9 +33,9 @@ if __name__ == '__main__':
     def objective(trial, X_train, y_train, X_test, y_test):
         # 后面填充
         param_grid = {
-            "n_estimators": trial.suggest_int("n_estimators", 150, 600, step=10),
-            "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.2),
-            "max_depth": trial.suggest_int("max_depth", 5, 10),
+            "n_estimators": trial.suggest_int("n_estimators", 150, 1000, step=10),
+            "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.5),
+            "max_depth": trial.suggest_int("max_depth", 5, 12),
             #"lambda_l1": trial.suggest_float("lambda_l1", 1e-8, 10.0),
             #"lambda_l2": trial.suggest_float("lambda_l2", 1e-8, 10.0),
             "feature_fraction": trial.suggest_float("feature_fraction", 0.3, 1.0),
@@ -60,10 +60,10 @@ if __name__ == '__main__':
         tot /= len(y_pred)
         print(f'Accuracy: {tot}')
         
-        return tot#(accuracys[0] + accuracys[1] + accuracys[2] * 2) / 4
+        return (accuracys[0] + accuracys[1] + accuracys[2]) / 3
 
     study = optuna.create_study(direction="maximize", study_name="LGBM Classifier")
     func = lambda trial: objective(trial, X_train, y_train, X_test, y_test)
-    study.optimize(func, n_trials=300)
+    study.optimize(func, n_trials=500)
     
     print(study.best_params)

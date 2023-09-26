@@ -36,15 +36,15 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 600, 'learning_rate': 0.1166128064827033,
-                'max_depth': 10, 'feature_fraction': 0.6500598981875909,
-                'bagging_fraction': 0.8887889294520509, 'bagging_freq': 3,
-                'min_child_samples': 334,
+                'n_estimators': 1000, 'learning_rate': 0.21875974633292312, 'max_depth': 9, 'feature_fraction': 0.6070539063213604, 'bagging_fraction': 0.9027529665840346, 'bagging_freq': 3, 'min_child_samples': 78,
                 'class_weight': 'balanced',
                 'verbosity': -1,
             }
     
     def init_data(self):
+        self.data_table = self.data_table.drop('date', axis=1)
+        self.test_data_table = self.test_data_table.drop('date', axis=1)
+
         data_table = self.data_table.drop('ticker', axis=1)
         data_table = data_table.drop('newPrice', axis = 1)
         data_table = data_table.drop('currentPrice', axis = 1)
