@@ -36,7 +36,8 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 1000, 'learning_rate': 0.21875974633292312, 'max_depth': 9, 'feature_fraction': 0.6070539063213604, 'bagging_fraction': 0.9027529665840346, 'bagging_freq': 3, 'min_child_samples': 78,
+                'n_estimators': 490, 'learning_rate': 0.035167366805917755, 'max_depth': 9, 'feature_fraction': 0.8078111655336141,
+                'bagging_fraction': 0.9514239297255702, 'bagging_freq': 2, 'min_child_samples': 672,
                 'class_weight': 'balanced',
                 'verbosity': -1,
             }
