@@ -46,7 +46,7 @@ class DataLoader():
 
         if not os.path.exists(cache_dir_path):
             os.mkdir(cache_dir_path)
-        
+
         vectors = []
         distribs = []
         for path in self.paths:
@@ -120,8 +120,8 @@ class DataLoader():
         else:
             positives = (self.data_table['Label'][idxes] == self.target_class).sum()
             total = len(idxes)
-        return (positives, total, positives / total)     
-            
+        return (positives, total, positives / total)
+
     def get_relevant_samples(self, idxes):
         samples = {}
         for i in idxes:
@@ -169,7 +169,7 @@ class DataLoader():
 
     def model_info(self):
         return self.info['model_info']
-    
+
     def set_data_table(self, data):
         # print('data length', len(self.model.y), len(data))
         if len(self.model.y) == len(data):
@@ -195,7 +195,7 @@ class DataLoader():
                 feature['scale'] = setting[name]['scale']
             else:
                 feature['scale'] = 'linear'
-            
+
             if name in setting and 'display_name' in setting[name]:
                 feature['display_name'] = setting[name]['display_name']
 
@@ -240,7 +240,7 @@ class DatasetLoader():
         #data = pd.read_csv('../data/credit_t.csv')
         target = 'Approved'
         targets = [(0, 'Rejected'), (1, 'Approved')]
-        
+
         info = pickle.load(open('../output/dump/credit_step2.pkl', 'rb'))
         #info = pickle.load(open('../output/dump/credit_v7_0529.pkl', 'rb'))
         loader = DataLoader(data, info, 'credit', target, targets)
@@ -255,7 +255,7 @@ class DatasetLoader():
         data_loader['stock'] = loader
         '''
 
-        data_table = pd.read_csv('../data/case2_stock/step/3year.csv')
+        data_table = pd.read_csv('../data/case2_stock/step/3year_raw.csv')
         info = pickle.load(open('../output/dump/stock_step0.pkl', 'rb'))
         loader = DataLoader(info, 'stock', 'label')
         loader.set_data_table(data_table)
@@ -266,30 +266,30 @@ class DatasetLoader():
         data = pd.read_csv('../data/stock_ep.csv')
         target = 'analystConsensus'
         targets = [(0, 'Increase'), (1, 'Stable'), (2, 'Decrease')]
-        
+
         info = pickle.load(open('../output/dump/stock_step1.1.pkl', 'rb'))
         loader = DataLoader(data, info, 'stock', target, targets)
         print('model', loader.model.X.shape, loader.model.y.shape, )
         loader.set_data_table(data_table)
         loader.class_weight = np.array([4, 1, 4])
         data_loader['stockep'] = loader
-        
+
         data = pd.read_csv('../data/stock2.csv')
         target = 'analystConsensus'
         targets = [(0, 'Increase'), (1, 'Stable'), (2, 'Decrease')]
-        
+
         info = pickle.load(open('../output/dump/stock_step2.pkl', 'rb'))
         loader = DataLoader(data, info, 'stock', target, targets)
         loader.set_data_table(data)
         loader.class_weight = np.array([4, 1, 4])
         data_loader['stock2'] = loader
         '''
-        
-        
+
+
         #loader.discretize()
 
         self.data_loader = data_loader
-        
+
     def get(self, name):
         return self.data_loader[name]
-        
+

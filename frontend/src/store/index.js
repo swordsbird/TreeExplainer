@@ -605,15 +605,13 @@ export default new Vuex.Store({
         if (!col.show_axis && left_width < tot_width) {
           col.width *= left_width / tot_width
         }
+        col.display_range = [0, col.width - feature_padding * 2]
         if (col.distorted && col.range[0] >= 0) {
-          col.scale = makeScale('log', col.range, [0, col.width - feature_padding * 2])
-          //col.scale = d3.scaleLinear()
-          //  .domain([col.q[0], col.q[2], col.q[4]])
-          //  .range([0, col.width / 2 - feature_padding, col.width - feature_padding * 2])
+          col.scale = makeScale('log', col.range, col.display_range)
         } else if (col.scale == 'log') {
-          col.scale = makeScale('sqrt', col.range, [0, col.width - feature_padding * 2])
+          col.scale = makeScale('sqrt', col.range, col.display_range)
         } else {
-          col.scale = makeScale('linear', col.range, [0, col.width - feature_padding * 2])
+          col.scale = makeScale('linear', col.range, col.display_range)
         }
         x += cols[i].width
         if (cols[i].pin && i < cols.length - 1 && !cols[i + 1].pin) {
@@ -670,21 +668,29 @@ export default new Vuex.Store({
                 })
             }
           } else {
-            let x0 = feature.scale(Math.max(feature.range[0], d.range[0])) + feature_padding
-            let x1 = feature.scale(Math.min(feature.range[1], d.range[1])) + feature_padding
-            if (x0 + state.matrixview.bar_min_width > x1) {
+            const min_gap = state.matrixview.bar_min_width
+            let x0 = feature.scale(Math.max(feature.range[0], d.range[0]))
+            let x1 = feature.scale(Math.min(feature.range[1], d.range[1]))
+            if (x0 <= feature.display_range[0] + min_gap) {
+              x0 = feature.display_range[0]
+            }
+            if (x1 >= feature.display_range[1] - min_gap) {
+              x1 = feature.display_range[1]
+            }
+            
+            if (x0 + min_gap > x1) {
+              const delta = x0 + min_gap - x1
+              x0 -= delta / 2
+              x1 += delta / 2
+            } else if (x1 - x0 + min_gap > feature.width) {
               if (d.range[1] >= feature.range[1]) {
-                x0 = x1 - state.matrixview.bar_min_width
+                x0 = x1 - feature.width + min_gap
               } else {
-                x1 = x0 + state.matrixview.bar_min_width
-              }
-            } else if (x1 - x0 + state.matrixview.bar_min_width > feature.width) {
-              if (d.range[1] >= feature.range[1]) {
-                x0 = x1 - feature.width + state.matrixview.bar_min_width
-              } else {
-                x1 = x0 + feature.width - state.matrixview.bar_min_width
+                x1 = x0 + feature.width - min_gap
               }
             }
+            x0 += feature_padding
+            x1 += feature_padding
             //todo
             elements.push({
               x0: x0,
