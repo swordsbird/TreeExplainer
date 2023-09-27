@@ -11,7 +11,7 @@ max_sample_num = 10000
 
 def path_predict(X, paths):
     n_classes = paths[0].get('n_classes', 2)
-    is_multiclass = n_classes > 2 
+    is_multiclass = n_classes > 2
     classes = paths[0].get('classes', [])
 
     table = Table()
@@ -52,7 +52,7 @@ class Extractor:
         else:
             self.X_raw = X_train
             self.y_raw = y_train
-    
+
         self.table = Table()
         for i in range(self.X_raw.shape[1]):
             self.table.add(self.X_raw[:, i])
@@ -97,7 +97,7 @@ class Extractor:
         for i, p in enumerate(paths):
             if self.cover is None:
                 ans = np.ones(X.shape[0])
-                m = p.get('range') 
+                m = p.get('range')
                 missing = p.get('missing', [])
                 for key in m:
                     if key in missing:
@@ -111,7 +111,7 @@ class Extractor:
 
     def predict(self, X, paths):
         return path_predict(X, paths)
-    
+
     '''
     def getConstraint(self, X, y, paths):
         table = Table()
@@ -170,7 +170,7 @@ class Extractor:
                     if y[i] == class0:
                         for dim in range(n_dims):
                             constr_weight[i + dim * n_samples] = weight[ci]
-
+            print('weight', weight)
         for p_i, path in enumerate(paths):
             if path['skip']:
                 continue
@@ -235,7 +235,7 @@ class Extractor:
             loss_curr += best_loss_gain
             z0[best_i] = z[best_i]
             z_candidates = [i for i in z_candidates if i != best_i]
-        
+
         z = z0
         z = z / np.sum(z)
         return z

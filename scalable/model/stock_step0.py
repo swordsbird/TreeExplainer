@@ -17,10 +17,10 @@ class Model(BaseModel):
     def __init__(self, model_name):
         super().__init__()
         self.data_name = 'stock'
-        self.data_path = os.path.join(data_path, 'case2_stock/step/3year.csv')
+        self.data_path = os.path.join(data_path, 'case2_stock/step/3year_2.csv')
         self.data_table = pd.read_csv(self.data_path)
-        
-        self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month.csv')
+
+        self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month_2.csv')
         self.test_data_table = pd.read_csv(self.test_data_path)
 
         self.target = 'label'
@@ -36,11 +36,11 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 180, 'learning_rate': 0.0017392960576492439, 'max_depth': 10, 'feature_fraction': 0.39441948678806726, 'bagging_fraction': 0.9646764925010354, 'bagging_freq': 4, 'min_child_samples': 508,
+                'n_estimators': 1000, 'learning_rate': 0.01, 'max_depth': 8, 'feature_fraction': 0.31218397234941525, 'bagging_fraction': 0.9189009275057256, 'bagging_freq': 5, 'min_child_samples': 224,
                 'class_weight': 'balanced',
                 'verbosity': -1,
             }
-    
+
     def init_data(self):
         self.data_table = self.data_table.drop('date', axis=1)
         self.test_data_table = self.test_data_table.drop('date', axis=1)
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     print(np.mean(ratios))
     print(ratios)
-        
+
     accuracys = []
     model.output_labels = model.clf.classes_
     num_classes = len(model.output_labels)
@@ -103,4 +103,4 @@ if __name__ == '__main__':
         print(f'Accuracy on {model.output_labels[i]}: {accuracy}')
 
     model.generate_path()
-    
+

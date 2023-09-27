@@ -13,7 +13,7 @@ def generate_model_paths(dataset, model_name):
     model = modelutil.model
     X, y = modelutil.get_rule_matrix()
     y = y.astype(int)
-    res = LRAnomalyDetection(X[:1500], y[:1500])
+    res = LRAnomalyDetection(X[:10000], y[:10000])
     score = res.score(X, y)
 
     feature_importance = []
@@ -399,7 +399,7 @@ if __name__ == '__main__':
     '''
     dataset = 'stock_step0'
     model_name = 'lightgbm'
-    model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.5, lambda_=0.2)
+    model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.1, lambda_=0.2)
     data = post_process(dataset, model_name, model, paths, level_info, idx)
 
     import pickle
