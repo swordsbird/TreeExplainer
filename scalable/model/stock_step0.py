@@ -36,7 +36,11 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 1000, 'learning_rate': 0.01, 'max_depth': 8, 'feature_fraction': 0.31218397234941525, 'bagging_fraction': 0.9189009275057256, 'bagging_freq': 5, 'min_child_samples': 224,
+                'n_estimators': 1000, 'learning_rate': 0.02, 'max_depth': 8,
+                'feature_fraction': 0.31218397234941525,
+                'bagging_fraction': 0.9189009275057256,
+                'bagging_freq': 5,
+                'min_child_samples': 224,
                 'class_weight': 'balanced',
                 'verbosity': -1,
             }
@@ -83,24 +87,25 @@ if __name__ == '__main__':
     model.train()
     model.get_performance()
 
-    y_pred_prob = model.clf.predict_proba(model.X_test)
-    y_pred = model.clf.predict(model.X_test)
-    conf_mat = confusion_matrix(model.y_test, y_pred)
-    idx = np.zeros(len(model.X_test)) > 0
-    ratios = []
-    for i in np.argsort(y_pred_prob[:, 1])[::-1][:20]:
-        ratios.append(model.test_rating[i])
-
-    print(np.mean(ratios))
-    print(ratios)
-
+    y_pred = model.clf.predict(model.X_train)
+    conf_mat = confusion_matrix(model.y_train, y_pred)
     accuracys = []
     model.output_labels = model.clf.classes_
     num_classes = len(model.output_labels)
     for i in range(num_classes):
         accuracy = conf_mat[i, i] / conf_mat[i].sum()
         accuracys.append(accuracy)
-        print(f'Accuracy on {model.output_labels[i]}: {accuracy}')
+        print(f'Train Accuracy on {model.output_labels[i]}: {accuracy}')
+
+    y_pred = model.clf.predict(model.X_test)
+    conf_mat = confusion_matrix(model.y_test, y_pred)
+    accuracys = []
+    model.output_labels = model.clf.classes_
+    num_classes = len(model.output_labels)
+    for i in range(num_classes):
+        accuracy = conf_mat[i, i] / conf_mat[i].sum()
+        accuracys.append(accuracy)
+        print(f'Test Accuracy on {model.output_labels[i]}: {accuracy}')
 
     model.generate_path()
 
