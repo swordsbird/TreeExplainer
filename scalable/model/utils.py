@@ -4,7 +4,7 @@ from .cancer import Model as CancerModel
 from .german_credit import Model as GermanModel
 from .wine import Model as WineModel
 from .stock_step0 import Model as StockModelStep0
-#from .stock_step1 import Model as StockModelStep1
+from .stock_step1 import Model as StockModelStep1
 #from .stock_step2 import Model as StockModelStep2
 from .credit_card import Model as CreditModel
 from .credit_card3 import Model as CreditModel3
@@ -20,8 +20,8 @@ def get_model(data_name, model_name, tag=''):
         return StockModelStep0(model_name)
     elif data_name == 'stock_step1':
         return StockModelStep1(model_name)
-    #elif data_name == 'stock_step1':
-    #    return StockModelStep1(model_name)
+    elif data_name == 'stock_step1':
+        return StockModelStep1(model_name)
     #elif data_name == 'stock_step2':
     #    return StockModelStep2(model_name)
     elif data_name == 'credit' or data_name == 'Credit Card':
