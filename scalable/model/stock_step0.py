@@ -17,10 +17,10 @@ class Model(BaseModel):
     def __init__(self, model_name):
         super().__init__()
         self.data_name = 'stock'
-        self.data_path = os.path.join(data_path, 'case2_stock/step/3year_2.csv')
+        self.data_path = os.path.join(data_path, 'case2_stock/step/3year_3.csv')
         self.data_table = pd.read_csv(self.data_path)
 
-        self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month_2.csv')
+        self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month_3.csv')
         self.test_data_table = pd.read_csv(self.test_data_path)
 
         self.target = 'label'
@@ -36,7 +36,7 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 1000, 'learning_rate': 0.02, 'max_depth': 8,
+                'n_estimators': 1000, 'learning_rate': 0.03, 'max_depth': 8,
                 'feature_fraction': 0.31218397234941525,
                 'bagging_fraction': 0.9189009275057256,
                 'bagging_freq': 5,
