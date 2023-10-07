@@ -397,10 +397,10 @@ if __name__ == '__main__':
     model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.05, lambda_=0.1)
     data = post_process(dataset, model_name, model, paths, level_info, idx)
     '''
-    dataset = 'stock_step1'
+    dataset = 'stock_step0'
     model_name = 'lightgbm'
     model, paths, level_info, idx = generate_hierarchy(dataset, model_name, n = 80, xi=0.1, lambda_=0.2)
     data = post_process(dataset, model_name, model, paths, level_info, idx)
 
     import pickle
-    pickle.dump(data, open('./output/dump/stock_step1.pkl', 'wb'))
+    pickle.dump(data, open('./output/dump/stock_step0.pkl', 'wb'))
