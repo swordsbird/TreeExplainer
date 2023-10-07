@@ -8,6 +8,8 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 from scalable.model.stock_step0 import Model
 
+base_accuracy = np.array([0.2970, 0.2260, 0.4770])
+
 if __name__ == '__main__':
     model = Model('lightgbm')
     model.init_data()
@@ -33,9 +35,9 @@ if __name__ == '__main__':
     def objective(trial, X_train, y_train, X_test, y_test):
         # 后面填充
         param_grid = {
-            "n_estimators": trial.suggest_int("n_estimators", 150, 1000, step=10),
+            "n_estimators": trial.suggest_int("n_estimators", 300, 1000, step=10),
             "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.5),
-            "max_depth": trial.suggest_int("max_depth", 5, 12),
+            "max_depth": trial.suggest_int("max_depth", 5, 10),
             #"lambda_l1": trial.suggest_float("lambda_l1", 1e-8, 10.0),
             #"lambda_l2": trial.suggest_float("lambda_l2", 1e-8, 10.0),
             "feature_fraction": trial.suggest_float("feature_fraction", 0.3, 1.0),
@@ -59,8 +61,10 @@ if __name__ == '__main__':
             tot += conf_mat[i, i]
         tot /= len(y_pred)
         print(f'Accuracy: {tot}')
-        
-        return (accuracys[0] + accuracys[1] + accuracys[2]) / 3
+        accuracys = np.array(accuracys)
+
+        gain = np.maximum(accuracys - base_accuracy, 0)
+        return gain[0] * gain[1] * gain[2]
 
     study = optuna.create_study(direction="maximize", study_name="LGBM Classifier")
     func = lambda trial: objective(trial, X_train, y_train, X_test, y_test)
