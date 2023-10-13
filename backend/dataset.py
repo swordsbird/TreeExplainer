@@ -206,7 +206,9 @@ class DataLoader():
                     data = data.drop(name, axis = 1)
                     data[name] = [encoding[name][i] for i in col]
             else:
-                r = feature['values'] = feature['range'] = data[name].astype(float).quantile([0.05, 0.95]).tolist()
+                r = feature['values'] = feature['range'] = data[name].astype(float).quantile([0.01, 0.99]).tolist()
+                if r[1] - r[0] > 100:
+                    r = feature['values'] = feature['range'] = data[name].astype(float).quantile([0.05, 0.95]).tolist()
                 q = data[name].astype(float).quantile([0.05, 0.25, 0.5, 0.75, 0.95]).tolist()
                 data.loc[data[name] < r[0], name] = r[0]
                 data.loc[data[name] > r[1], name] = r[1]

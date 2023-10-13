@@ -669,8 +669,8 @@ export default new Vuex.Store({
             }
           } else {
             const min_gap = state.matrixview.bar_min_width
-            let x0 = feature.scale(Math.max(feature.range[0], d.range[0]))
-            let x1 = feature.scale(Math.min(feature.range[1], d.range[1]))
+            let x0 = feature.scale(d.range[0])
+            let x1 = feature.scale(d.range[1])
             if (x0 <= feature.display_range[0] + min_gap) {
               x0 = feature.display_range[0]
             }
@@ -679,9 +679,22 @@ export default new Vuex.Store({
             }
             
             if (x0 + min_gap > x1) {
-              const delta = x0 + min_gap - x1
+              let delta = x0 + min_gap - x1
+              if (x0 + min_gap >= feature.width) {
+                delta = feature.width - x1
+              }
+              if (x1 < min_gap) {
+                delta = x0
+              }
               x0 -= delta / 2
               x1 += delta / 2
+              if (x1 - x0 < min_gap) {
+                if (x0 == 0) {
+                  x1 += (min_gap - (x1 - x0)) / 2
+                } else {
+                  x0 -= (min_gap - (x1 - x0)) / 2
+                }
+              }
             } else if (x1 - x0 + min_gap > feature.width) {
               if (d.range[1] >= feature.range[1]) {
                 x0 = x1 - feature.width + min_gap
@@ -911,8 +924,8 @@ export default new Vuex.Store({
           key: cond_key,
           range: rule.range[cond_key],
         })).filter(d => state.data_features[d.key].dtype != 'number'
-        || d.range[0] > state.data_features[d.key].range[0]
-        || d.range[1] < state.data_features[d.key].range[1])
+        || d.range[0] > -1e17//state.data_features[d.key].range[0]
+        || d.range[1] < 1e17)//state.data_features[d.key].range[1])
       }))//.filter(d => d.fidelity > 0.6)
       if (state.matrixview.max_level == -1) {
         state.matrixview.max_level = Math.max(...raw_rules.map(d => d.level))
