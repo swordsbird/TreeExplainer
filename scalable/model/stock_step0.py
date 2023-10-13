@@ -9,7 +9,7 @@ from scalable.model.data_encoding import stock_encoding
 import numpy as np
 from scalable.config import data_path
 from sklearn.metrics import confusion_matrix
-from scalable.model.data_encoding import stock_encoding
+from sklearn.metrics import accuracy_score, precision_score, f1_score
 
 random_state = 42
 
@@ -38,7 +38,7 @@ class Model(BaseModel):
             self.parameters = {
                 'n_estimators': 500,
                 "colsample_bytree": 0.8879,
-                "learning_rate": 0.0251,
+                "learning_rate": 0.0281,
                 "subsample": 0.8789,
                 "max_depth": 8,
                 "num_leaves": 50,
@@ -56,6 +56,7 @@ class Model(BaseModel):
 
         features = data_table.columns.tolist()
         features = [k for k in features if k != 'rating' and k != 'label']
+        print(f'{len(features)} features')
 
         for key in stock_encoding:
             index = 0
@@ -78,6 +79,7 @@ class Model(BaseModel):
         self.X = X_train.values
         self.y = y_train.values
         self.data_table = data_table.drop('rating', axis = 1)
+        self.current_features = features
 
         self.check_columns(self.data_table, self.target)
 
@@ -107,6 +109,29 @@ if __name__ == '__main__':
         accuracy = conf_mat[i, i] / conf_mat[i].sum()
         accuracys.append(accuracy)
         print(f'Test Accuracy on {model.output_labels[i]}: {accuracy}')
+
+    bank_idx = np.flatnonzero(model.test_data_table['industry_Banks—Regional'])
+    X_test = model.X_test[bank_idx]
+    y_test = model.y_test[bank_idx]
+    y_pred = model.clf.predict(X_test)
+    conf_mat = confusion_matrix(y_test, y_pred)
+    accuracys = []
+    model.output_labels = model.clf.classes_
+    num_classes = len(model.output_labels)
+    for i in range(num_classes):
+        accuracy = conf_mat[i, i] / conf_mat[i].sum()
+        accuracys.append(accuracy)
+        print(f'Bank Test Accuracy on {model.output_labels[i]}: {accuracy}')
+    accuracy = accuracy_score(y_test, y_pred)
+    print(round(accuracy, 4))
+
+    clf = model.clf
+    sorted_features = [(clf.feature_name_[i], clf.feature_importances_[i]) for i in range(len(clf.feature_importances_))]
+    sorted_features = sorted(sorted_features, key = lambda x: -x[1])
+    for k in sorted_features:
+        i, j = k
+        i = model.current_features[int(i.split('_')[1])]
+        # print(i, j)
 
     model.generate_path()
 
