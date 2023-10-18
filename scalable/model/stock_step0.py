@@ -124,7 +124,22 @@ if __name__ == '__main__':
         print(f'Bank Test Accuracy on {model.output_labels[i]}: {accuracy}')
     accuracy = accuracy_score(y_test, y_pred)
     print(round(accuracy, 4))
-
+    '''
+    bank_idx = np.flatnonzero(model.test_data_table['industry_Banks—Regional'])
+    X_test = model.X_train[bank_idx]
+    y_test = model.y_train[bank_idx]
+    y_pred = model.clf.predict(X_test)
+    conf_mat = confusion_matrix(y_test, y_pred)
+    accuracys = []
+    model.output_labels = model.clf.classes_
+    num_classes = len(model.output_labels)
+    for i in range(num_classes):
+        accuracy = conf_mat[i, i] / conf_mat[i].sum()
+        accuracys.append(accuracy)
+        print(f'Bank Train Accuracy on {model.output_labels[i]}: {accuracy}')
+    accuracy = accuracy_score(y_test, y_pred)
+    print(round(accuracy, 4))
+    '''
     clf = model.clf
     sorted_features = [(clf.feature_name_[i], clf.feature_importances_[i]) for i in range(len(clf.feature_importances_))]
     sorted_features = sorted(sorted_features, key = lambda x: -x[1])

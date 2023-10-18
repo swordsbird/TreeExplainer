@@ -17,10 +17,10 @@ class Model(BaseModel):
     def __init__(self, model_name):
         super().__init__()
         self.data_name = 'stock'
-        self.data_path = os.path.join(data_path, 'case2_stock/step/3year_3.csv')
+        self.data_path = os.path.join(data_path, 'case2_stock/step/3year_4.csv')
         self.data_table = pd.read_csv(self.data_path)
 
-        self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month_3.csv')
+        self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month_4.csv')
         self.test_data_table = pd.read_csv(self.test_data_path)
 
         self.target = 'label'
@@ -36,12 +36,7 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 500,
-                "colsample_bytree": 0.8879,
-                "learning_rate": 0.0281,
-                "subsample": 0.8789,
-                "max_depth": 8,
-                "num_leaves": 50,
+                'n_estimators': 500, 'learning_rate': 0.010299122762618608, 'colsample_bytree': 0.7191110863048426, 'subsample': 0.6715297220330616, 'num_leaves': 54,
                 'class_weight': 'balanced',
                 'verbosity': -1,
             }
@@ -138,7 +133,7 @@ if __name__ == '__main__':
     for k in sorted_features:
         i, j = k
         i = model.current_features[int(i.split('_')[1])]
-        # print(i, j)
+        print(i, j)
 
     model.generate_path()
 

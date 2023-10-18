@@ -9,7 +9,9 @@ from scalable.model.data_encoding import stock_encoding
 import numpy as np
 from scalable.config import data_path
 from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score, precision_score, f1_score
+from scalable.model.data_encoding import stock_encoding
+from sklearn.ensemble import RandomForestClassifier
+from lightgbm import LGBMClassifier
 
 random_state = 42
 
@@ -24,8 +26,8 @@ class Model(BaseModel):
         self.test_data_table = pd.read_csv(self.test_data_path)
 
         self.target = 'label'
-        self.output_labels = ["decrease", "stable", "increase"]
-        self.model_id = 106
+        self.output_labels = ["increase", "decrease", "stable"]
+        self.model_id = 105
 
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
@@ -36,15 +38,25 @@ class Model(BaseModel):
             }
         else:
             self.parameters = {
-                'n_estimators': 500,
-                "colsample_bytree": 0.8879,
-                "learning_rate": 0.0281,
-                "subsample": 0.8789,
-                "max_depth": 8,
-                "num_leaves": 50,
+                'n_estimators': 450, 'learning_rate': 0.0642046991766106, 'max_depth': 10, 'feature_fraction': 0.8128422997766153, 'bagging_fraction': 0.8912579151709198, 'bagging_freq': 5, 'min_child_samples': 829,
                 'class_weight': 'balanced',
                 'verbosity': -1,
             }
+            self.parameters2 = {
+                'n_estimators': 330, 'learning_rate': 0.07211735911931144, 'max_depth': 6, 'feature_fraction': 0.4886664588097667, 'bagging_fraction': 0.8246631152639385, 'bagging_freq': 6, 'min_child_samples': 554,
+                'class_weight': 'balanced',
+                'verbosity': -1,
+            }
+
+    def train(self):
+        if self.model_name == 'random forest' or self.model_name == 'rf':
+            self.clf1 = RandomForestClassifier(**self.parameters)
+            self.clf2 = RandomForestClassifier(**self.parameters)
+        elif self.model_name == 'lightgbm' or self.model_name == 'lgbm':
+            self.clf1 = LGBMClassifier(**self.parameters)
+            self.clf2 = LGBMClassifier(**self.parameters2)
+        self.clf1.fit(self.X_train, self.y_train_1)
+        self.clf2.fit(self.X_train, self.y_train_2)
 
     def init_data(self):
         self.data_table = self.data_table.drop('date', axis=1)
@@ -53,16 +65,9 @@ class Model(BaseModel):
         data_table = self.data_table.drop('ticker', axis=1)
         data_table = data_table.drop('newPrice', axis = 1)
         data_table = data_table.drop('currentPrice', axis = 1)
-        # data_table['peRatioTTM'] = 1.0 / data_table['peRatioTTM']
-        # data_table['evToEbit'] = 1.0 / data_table['evToEbit']
-        for k in data_table.columns:
-            if 'industry' in k or 'sector' in k:
-                data_table = data_table.drop(k, axis = 1)
-        # data_table = data_table.drop('STD60', axis = 1)
 
         features = data_table.columns.tolist()
         features = [k for k in features if k != 'rating' and k != 'label']
-        print(f'{len(features)} features')
 
         for key in stock_encoding:
             index = 0
@@ -72,20 +77,22 @@ class Model(BaseModel):
                     index += 1
 
         X_train = data_table[features]
-        y_train = data_table[self.target]
+        y_train_1 = data_table[self.target] != 'stable'
+        y_train_2 = data_table[self.target] == 'increase'
         X_test = self.test_data_table[features]
         y_test = self.test_data_table[self.target]
 
         self.train_rating = data_table['rating'].values
         self.test_rating = self.test_data_table['rating'].values
         self.X_train = X_train.values
-        self.y_train = y_train.values
+        self.y_train_1 = y_train_1.values
+        self.y_train_2 = y_train_2.values
+        self.y_train = data_table[self.target].values
         self.X_test = X_test.values
         self.y_test = y_test.values
         self.X = X_train.values
-        self.y = y_train.values
+        self.y = data_table[self.target].values
         self.data_table = data_table.drop('rating', axis = 1)
-        self.current_features = features
 
         self.check_columns(self.data_table, self.target)
 
@@ -94,51 +101,31 @@ if __name__ == '__main__':
     model.init_data()
     # print(model.X_train.mean())
     model.train()
-    model.get_performance()
 
-    y_pred = model.clf.predict(model.X_train)
+    y_pred1 = model.clf1.predict(model.X_train)
+    y_pred2 = model.clf2.predict(model.X_train)
+    y_pred = ['increase' if y_pred2[i] else ('decrease' if y_pred1[i] else 'stable') for i in range(len(y_pred1))]
+    #y_pred = ['stable' if not y_pred1[i] else ('increase' if y_pred2[i] else 'decrease') for i in range(len(y_pred1))]
     conf_mat = confusion_matrix(model.y_train, y_pred)
     accuracys = []
-    model.output_labels = model.clf.classes_
+    # model.output_labels = model.clf.classes_
     num_classes = len(model.output_labels)
     for i in range(num_classes):
         accuracy = conf_mat[i, i] / conf_mat[i].sum()
         accuracys.append(accuracy)
         print(f'Train Accuracy on {model.output_labels[i]}: {accuracy}')
 
-    y_pred = model.clf.predict(model.X_test)
+    y_pred1 = model.clf1.predict(model.X_test)
+    y_pred2 = model.clf2.predict(model.X_test)
+    y_pred = ['increase' if y_pred2[i] else ('decrease' if y_pred1[i] else 'stable') for i in range(len(y_pred1))]
+    #y_pred = ['stable' if not y_pred1[i] else ('increase' if y_pred2[i] else 'decrease') for i in range(len(y_pred1))]
     conf_mat = confusion_matrix(model.y_test, y_pred)
     accuracys = []
-    model.output_labels = model.clf.classes_
+    # model.output_labels = model.clf.classes_
     num_classes = len(model.output_labels)
     for i in range(num_classes):
         accuracy = conf_mat[i, i] / conf_mat[i].sum()
         accuracys.append(accuracy)
         print(f'Test Accuracy on {model.output_labels[i]}: {accuracy}')
-
-    bank_idx = np.flatnonzero(model.test_data_table['industry_Banks—Regional'])
-    X_test = model.X_test[bank_idx]
-    y_test = model.y_test[bank_idx]
-    y_pred = model.clf.predict(X_test)
-    conf_mat = confusion_matrix(y_test, y_pred)
-    accuracys = []
-    model.output_labels = model.clf.classes_
-    num_classes = len(model.output_labels)
-    for i in range(num_classes):
-        accuracy = conf_mat[i, i] / conf_mat[i].sum()
-        accuracys.append(accuracy)
-        print(f'Bank Test Accuracy on {model.output_labels[i]}: {accuracy}')
-    accuracy = accuracy_score(y_test, y_pred)
-    print(round(accuracy, 4))
     print(conf_mat)
-
-    clf = model.clf
-    sorted_features = [(clf.feature_name_[i], clf.feature_importances_[i]) for i in range(len(clf.feature_importances_))]
-    sorted_features = sorted(sorted_features, key = lambda x: -x[1])
-    for k in sorted_features:
-        i, j = k
-        i = model.current_features[int(i.split('_')[1])]
-        # print(i, j)
-
     model.generate_path()
-
