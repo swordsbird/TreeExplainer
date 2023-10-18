@@ -25,7 +25,7 @@ class Model(BaseModel):
 
         self.target = 'label'
         self.output_labels = ["decrease", "stable", "increase"]
-        self.model_id = 106
+        self.model_id = 110
 
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
