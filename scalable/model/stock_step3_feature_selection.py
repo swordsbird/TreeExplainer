@@ -43,7 +43,7 @@ def trail(features):
     print(', '.join(s))
 
     gain = np.maximum(accuracys - distribution, -1)
-    gain = (gain[0] * gain[1] * gain[2]) ** 0.33
+    gain = (gain[0] * gain[1]) ** 0.5
     return gain
 
 if __name__ == '__main__':
