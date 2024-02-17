@@ -12,7 +12,7 @@ def visit_boosting_tree(tree, path = {}, missing = []):
             'value': tree['leaf_value'],
             'weight': tree.get('leaf_weight', 1),
         }]
-    
+
     key = tree['split_feature']
     thres = tree['threshold']
     default_left = tree['default_left']
@@ -59,7 +59,7 @@ def visit_decision_tree(tree, index = 0, path = {}):
         leftpath[key] = [-1e17, thres]
     if tree.children_left[index] != index:
         ret += visit_decision_tree(tree, tree.children_left[index], leftpath)
-    
+
     rightpath = deepcopy(path)
     if key in rightpath:
         r = rightpath[key]
@@ -70,27 +70,6 @@ def visit_decision_tree(tree, index = 0, path = {}):
         ret += visit_decision_tree(tree, tree.children_right[index], rightpath)
 
     return ret
-
-def assign_distribution(paths, data):
-    X, y = data
-    table = Table()
-    for i in range(X.shape[1]):
-        table.add(X[:, i])
-
-    for p in paths:
-        m = p.get('range')
-        missing = p.get('missing', [])
-        conds = [(key, m[key], key in missing) for key in m]
-        samples = table.query(conds)
-        
-        pos = 0
-        neg = 0
-        for i in samples:
-            if y[i] == 0:
-                neg += 1
-            else:
-                pos += 1
-        path['distribution'] = [neg, pos]
 
 def assign_samples(paths, data):
     X, y = data
@@ -121,13 +100,15 @@ def assign_samples_lgbm(paths, data, model):
         if p['tree_index'] not in tree_paths:
             tree_paths[p['tree_index']] = []
         tree_paths[p['tree_index']].append(p)
-    for tree_index in tree_paths:
-        tpaths = tree_paths[tree_index]
-        min_value = np.array([p['value'] for p in tpaths]).min()
-        if min_value < 0:
-            for p in tpaths:
-                p['value'] -= min_value
-                
+
+    if len(model.classes_) > 2:
+        for tree_index in tree_paths:
+            tpaths = tree_paths[tree_index]
+            min_value = np.array([p['value'] for p in tpaths]).min()
+            if min_value < 0:
+                for p in tpaths:
+                    p['value'] -= min_value
+
     table = Table()
     for i in range(X.shape[1]):
         table.add(X[:, i])
@@ -141,6 +122,7 @@ def assign_samples_lgbm(paths, data, model):
         path['distribution'] = [(ans == c).sum() for c in model.classes_]
         if len(model.classes_) == 2:
             path['output'] = 0 if path['value'] < 0 else 1
+            path['output_class'] = path['output']
             path['is_multiclass'] = False
         else:
             path['output'] = [0 for c in model.classes_]
@@ -148,13 +130,54 @@ def assign_samples_lgbm(paths, data, model):
             path['output'][o] = path['value']
             path['is_multiclass'] = True
             path['output_class'] = o
-            path['classes'] = model.classes_
-        path['n_classes'] = len(model.classes_) 
+        path['classes'] = model.classes_
+        path['n_classes'] = len(model.classes_)
         path['coverage'] = 1.0 * len(idx) / X.shape[0]
-        
-def assign_value_for_random_forest(paths, data):
+
+def assign_samples_RF(paths, data, model):
     X, y = data
-    for path in paths:
+    y = np.array(y)
+    table = Table()
+    for i in range(X.shape[1]):
+        table.add(X[:, i])
+
+    weight = np.array([np.sum(y == c) for c in model.classes_])
+    weight = weight.astype(np.float64)
+    weight = 1.0 / (weight / weight.max())
+    print('weight', weight)
+    for i, path in enumerate(paths):
+        m = path.get('range')
+        missing = path.get('missing', [])
+        conds = [(key, m[key], key in missing) for key in m]
+        idx = table.query(conds)
+        path['sample_id'] = idx
+        ans = y[idx]
+        path['distribution'] = [(ans == c).sum() for c in model.classes_]
+        distri = np.array(path['distribution']) * weight
+        o = np.argmax(distri)
+        if path['distribution'][o] == 0:
+            v = 0
+            path['confidence'] = 0
+        else:
+            s = np.sum(distri)
+            path['confidence'] = distri[o] / s
+            v = (distri[o] / s) - 1.0 / len(distri)
+            v = v ** 2
+        if len(model.classes_) == 2:
+            path['output'] = o
+            path['output_class'] = o
+            path['value'] = v * (-1 if o == 0 else 1)
+            path['is_multiclass'] = False
+        else:
+            path['output'] = [0 for c in model.classes_]
+            path['value'] = v
+            path['output'][o] = path['value']
+            path['is_multiclass'] = True
+            path['output_class'] = o
+        path['classes'] = model.classes_
+        path['n_classes'] = len(model.classes_)
+        path['coverage'] = 1.0 * len(idx) / X.shape[0]
+        '''
         ans = 2 * y - 1
         m = path['range']
         for key in m:
@@ -172,6 +195,7 @@ def assign_value_for_random_forest(paths, data):
         else:
             path['value'] = 0
             path['confidence'] = 0
+        '''
 
 def path_extractor(model, model_type, data = None):
     if model_type == 'random forest' :
@@ -184,7 +208,7 @@ def path_extractor(model, model_type, data = None):
                 path['rule_index'] = rule_index
                 path['name'] = 'r' + str(tree_index) + '_' + str(rule_index)
             ret += treepaths
-        assign_value_for_random_forest(ret, data)
+        assign_samples_RF(ret, data, model)
         #if len(ret) > 30000:
         #    ret = sorted(ret, key = lambda x: -x['confidence'])
         #    ret = ret[:30000]
@@ -201,7 +225,8 @@ def path_extractor(model, model_type, data = None):
                 path['rule_index'] = rule_index
                 path['name'] = 'r' + str(tree_index) + '_' + str(rule_index)
             ret += treepaths
-        assign_value_for_random_forest(ret, data)
+        model.classes_ = [0, 1]
+        assign_samples_RF(ret, data, model)
         #if len(ret) > 30000:
         #    ret = sorted(ret, key = lambda x: -x['confidence'])
         #    ret = ret[:30000]
@@ -224,4 +249,4 @@ def path_extractor(model, model_type, data = None):
     elif model_type == 'node harvest tree':
         return visit_decision_tree(model)
     return []
-    
+

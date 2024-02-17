@@ -4,13 +4,13 @@
       Model Info
     </div>
     <div class="tree-text ma-3">
-    <v-card-actions>
+    <!--v-card-actions>
       <v-btn
         text @click="clearSession()"
       >
         Reset
       </v-btn>
-    </v-card-actions>
+    </v-card-actions-->
       
     <p class="ml-1"> <span style="font-weight: 400">Model: </span> {{ model_info.model }} </p>
     <p class="ml-1"> <span style="font-weight: 400">Dataset: </span> {{ model_info.dataset }} </p>

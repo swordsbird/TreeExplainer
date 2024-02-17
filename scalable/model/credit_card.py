@@ -22,7 +22,11 @@ class Model(BaseModel):
         self.data_table = pd.read_csv(self.data_path)
         self.target = 'Approved'
         self.output_labels = ['0', '1']
+        self.test_data_path = os.path.join(data_path, 'case1_credit_card/test.csv')
+        self.test_data_table = pd.read_csv(self.test_data_path)
 
+        self.model_id = -1
+        self.has_categorical_feature = True
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
             self.parameters = {
@@ -36,11 +40,11 @@ class Model(BaseModel):
         else:
             self.parameters = {
                 'n_estimators': 100,
-                'max_depth': 12,
+                'max_depth': 10,
                 'random_state': random_state,
             }
 
-    def transform_data(self, data_table):
+    def transform_table(self, data_table):
         data_table = data_table.copy()
         data_table['ZipCode'] = [-1 if i in self.other_zipcodes else i for i in data_table['ZipCode'].values]
         for feature in self.qualitative_features:
@@ -50,8 +54,12 @@ class Model(BaseModel):
         for feature in self.qualitative_features:
             if feature not in self.binary_features:
                 data_table = data_table.drop(feature, axis = 1)
+        return data_table
 
-        X = data_table.drop(self.target, axis=1).values
+    def transform_data(self, data_table):
+        data_table = self.transform_table(data_table)
+
+        X = data_table[self.data_table.columns].drop(self.target, axis=1).values
         y = data_table[self.target].values
         return X, y
 
@@ -69,6 +77,7 @@ class Model(BaseModel):
         for val in unique_values:
             unique_groups.append((val, (data_table['ZipCode'].values == val).sum()))
         other_zipcodes = [zc for zc, zc_count in unique_groups if zc_count < 30]
+        print(other_zipcodes)
         new_zipcode = [-1 if i in other_zipcodes else i for i in data_table['ZipCode'].values]
         self.other_zipcodes = other_zipcodes
         data_table['ZipCode'] = new_zipcode
@@ -96,7 +105,9 @@ class Model(BaseModel):
         indices = np.arange(X.shape[0])
         indices_train, indices_test, y_train, y_test = train_test_split(indices, y, test_size=self.test_size, random_state=random_state)
         X_train = X[indices_train]
-        X_test = X[indices_test]
+        self.data_table = data_table
+        # X_test = X[indices_test]
+        X_test, y_test = self.transform_data(self.test_data_table)
         self.indices_train = indices_train
         self.indices_test = indices_test
 
@@ -113,17 +124,16 @@ class Model(BaseModel):
         self.X_train = X_train
         self.y_train = y_train
         self.X_test = X_test
-        
+
         self.y_test = y_test
         self.X = X
         self.y = y
-        self.data_table = data_table
 
         self.check_columns(data_table, self.target)
 
 if __name__ == '__main__':
 
-    model = Model('random forest')
+    model = Model('lightgbm')
     model.init_data()
     model.train()
     model.get_performance()

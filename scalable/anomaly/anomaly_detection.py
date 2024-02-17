@@ -11,6 +11,8 @@ class LRAnomalyDetection():
         self.attr = attr
         self.lr = LogisticRegression(class_weight='balanced')
         self.lr.fit(X, y)
+        # print('detection', X)
+        # print('detection score', self.lr.score(X, y))
         self.w = self.lr.coef_[0]
         self.intercept = self.lr.intercept_
 

@@ -92,6 +92,10 @@ class Model(BaseModel):
         self.model_id = 5
         self.output_labels = ['0', '1']
 
+        self.has_categorical_feature = True
+        self.test_data_path = os.path.join(data_path, 'case1_credit_card/test.csv')
+        self.test_data_table = pd.read_csv(self.test_data_path)
+
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
             self.parameters = {
@@ -118,7 +122,6 @@ class Model(BaseModel):
         synthesizer.fit(original_data)
         data = synthesizer.sample(num_rows=num_rows)
         data.loc['Approved', :] = label
-        print(data.head())
         return data
 
     def transform_table(self, data_table):
@@ -182,7 +185,6 @@ class Model(BaseModel):
         indices = np.arange(X.shape[0])
         indices_train, indices_test, y_train, y_test = train_test_split(indices, y, test_size=self.test_size, random_state=random_state)
         X_train = X[indices_train]
-        X_test = X[indices_test]
         self.indices_train = indices_train
         self.indices_test = indices_test
         categorical_features = np.ones(len(features)) == 0
@@ -198,12 +200,14 @@ class Model(BaseModel):
         for i, j in enumerate(indices_train):
             if j in new_label:
                 y_train[i] = new_label[j]
-                
+
         for i, j in enumerate(indices_test):
             if j in new_label:
                 y_test[i] = new_label[j]
 
         self.data_table = data_table
+        # X_test = X[indices_test]
+        X_test, y_test = self.transform_data(self.test_data_table)
         self.X_train = X_train
         self.y_train = y_train
         self.X_test = X_test
@@ -221,7 +225,7 @@ class Model(BaseModel):
         for k in conds:
             new_data = pd.read_csv(f'analysis/result/{k}_current.csv')
             all_data.append(new_data)
-            
+
         new_data = pd.concat(all_data, axis = 0)
         X_new, y_new = self.transform_data(new_data)
         self.X_train = np.concatenate((X_new, self.X_train, ), axis = 0)
@@ -237,12 +241,6 @@ if __name__ == '__main__':
     old_score = detect.score()
     old_model = util.model
 
-    valid_data = pd.read_csv(f'analysis/result/valid.csv')
-    X_valid, y_valid = old_model.transform_data(valid_data)
-    y_pred = old_model.clf.predict(X_valid)
-    accuracy =  (y_valid == y_pred).sum() / len(valid_data)
-    print(f'Accuracy on valid test (before): {accuracy}')
-
     model = Model('random forest')
     model.init_data_original()
     model.train()
@@ -250,17 +248,17 @@ if __name__ == '__main__':
 
     all_data = []
     for k in conds:
-        new_data = pd.read_csv(f'analysis/result/{k}_current.csv')
+        new_data = pd.read_csv(f'data/case1_credit_card/supplement/{k}_current.csv')
         all_data.append(new_data)
-        
+
     new_data = pd.concat(all_data, axis = 0)
     X_train, y_train = model.transform_data(new_data)
     X_train = np.concatenate((X_train, model.X_train), axis = 0)
     y_train = np.concatenate((y_train, model.y_train), axis = 0)
     model.clf.fit(X_train, y_train)
-    y_pred = model.clf.predict(X_valid)
-    accuracy =  (y_valid == y_pred).sum() / len(valid_data)
-    print(f'Accuracy on valid test (after): {accuracy}')
+    print('-' * 20)
+    print('new')
+    model.get_performance(X_train, y_train, model.X_test, model.y_test)
 
     model.data_table = pd.concat((model.transform_table(new_data), model.data_table), axis = 0)
 
@@ -269,12 +267,10 @@ if __name__ == '__main__':
     model.generate_path()
     X, y = util.get_rule_matrix()
     y = y.astype(int)
-
     detect = LRAnomalyDetection(X, y)
     new_score = detect.score()
 
     print(f'{old_score.mean()} -> {new_score.mean()}')
-
     mean1 = np.mean(new_score)
     mean2 = np.mean(old_score)
     n1 = len(new_score)
@@ -283,21 +279,16 @@ if __name__ == '__main__':
     std1 = np.std(new_score, ddof=1)
     std2 = np.std(old_score, ddof=1)
 
-    # 计算观察到的t-score
     t_observed = (mean1 - mean2) / np.sqrt((std1**2 / n1) + (std2**2 / n2))
 
     alpha = 0.05  # 或其他所需的显著性水平
-
     # 计算自由度
     df = n1 + n2 - 2
-
     # 计算p-value
     p_value = 2 * (1 - stats.t.cdf(np.abs(t_observed), df))
-
     if p_value < alpha:
         print("拒绝原假设，两个样本的均值存在显著差异。")
     else:
         print("无足够证据拒绝原假设，两个样本的均值没有显著差异。")
-
     print(f'p-value: {p_value}')
 

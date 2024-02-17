@@ -1,6 +1,7 @@
 import bisect
 import math
 import numpy as np
+import pandas as pd
 import copy
 from scalable.model.utils import get_model
 
@@ -8,8 +9,6 @@ def rule_to_text(rule):
     conds = rule[0]
     ret = rule[1]
     return 'IF ' + ' AND '.join(['%s %s %s' % (str(a), str(b), str(c)) for (a, b, c) in conds]) + ' THEN ' + ret
-
-str_keys = ['industry', 'country', 'exchange', 'sector', 'previousConsensus']
 
 class ModelUtil():
     def __init__(self, data_name, model_name, parameters = None):
@@ -21,42 +20,46 @@ class ModelUtil():
             model.parameters = parameters
         model.train()
         model.get_performance()
-
+        data_table = model.data_table.copy()
         self.features = copy.deepcopy(model.features)
-        while len(self.features) < model.X_train.shape[1]:
-            self.features.append(str(len(self.features)))
+        while len(self.features) < model.X.shape[1]:
+            k = str(len(self.features))
+            data_table[k] = model.X[:, len(self.features)]
+            self.features.append(k)
+
         new_feature = {}
         feature_pos = {}
         for index, feature in enumerate(self.features):
             is_cat = False
-            for delimiter in [' - ', '_']:
-                if delimiter not in feature:
-                    continue
-                name, _ = feature.split(delimiter)
-                if len([k for k in self.features if name in k]) == 1:
-                    continue
-                if name not in new_feature:
-                    new_feature[name] = {}
-                if feature not in new_feature[name]:
-                    new_feature[name][feature] = index
-                is_cat = True
-                break
+            if model.has_categorical_feature:
+                for delimiter in [' - ', '_']:
+                    if delimiter not in feature:
+                        continue
+                    print('feature', feature)
+                    name, _ = feature.split(delimiter)
+                    if len([k for k in self.features if name in k]) == 1:
+                        continue
+                    if name not in new_feature:
+                        new_feature[name] = {}
+                    if feature not in new_feature[name]:
+                        new_feature[name][feature] = index
+                    is_cat = True
+                    break
             if not is_cat:
                 new_feature[feature] = index
-
-        data_table = model.data_table
+        # print('features', self.features)
         feature_range = {}
         for key in new_feature:
             if key in data_table.columns:
                 x = data_table[key]
                 x = x[~np.isnan(x)]
                 feature_range[key] = [x.min(), x.max()]
-            else:
+            elif type(new_feature[key]) != int:
                 feature_range[key] = [0, len(new_feature[key])]
             if type(new_feature[key]) == int:
                 index = new_feature[key]
                 feature_pos[index] = (key, index)
-            else: 
+            else:
                 for feature in new_feature[key]:
                     index = new_feature[key][feature]
                     feature_pos[index] = (key, index)
@@ -65,12 +68,13 @@ class ModelUtil():
         self.model = model
         self.feature_range = feature_range
         self.feature_pos = feature_pos
+        self.data_table = data_table
 
     def init_suffix_sum(self, X):
         self.ordered_vals = []
         for i in range(X.shape[1]):
             x = X[:, i]
-            x = x[~np.isnan(x)]
+            x = x[~pd.isnull(x)]
             vals = sorted(x.tolist())
             self.ordered_vals.append(vals)
 
@@ -85,11 +89,11 @@ class ModelUtil():
         except:
             pass
         return 0
-            
+
     def interpret_path(self, path, to_text = False):
         conds = {}
         current_encoding = self.model.current_encoding
-        data_table = self.model.data_table
+        data_table = self.data_table
         for k in path['range']:
             name = self.feature_pos[k][0]
             val = path['range'][k]
@@ -207,7 +211,7 @@ class ModelUtil():
                 continue
             feature, index = self.feature_pos[i]
             is_categorical.append(is_feature_categorical[feature])
-            feature_range.append(self.feature_range[feature])
+            feature_range.append(self.feature_range.get(feature, [0, 1]))
 
         paths = self.model.paths
         n_features = len(is_categorical)
@@ -230,7 +234,9 @@ class ModelUtil():
         y = np.ones((len(paths), ))
 
         mid = np.zeros((n_features + n_extends)).astype('float')
-        data_table = self.model.data_table
+        data_table = self.data_table
+        self.init_suffix_sum(self.model.X)
+
         valid_counts = np.zeros(n_features)
         for i, k in enumerate(self.features):
             valid_counts[i] = len(data_table) - data_table[k].isna().sum()
@@ -281,8 +287,10 @@ class ModelUtil():
                 else:
                     left = (max(feature_range[i][0], m[i][0]))
                     right = (min(feature_range[i][1], m[i][1]))
-                    left = self.get_sum(i, 0, left - 1e-6, 1, 0) / valid_counts[i]
-                    right = self.get_sum(i, 0, right, 1, 0) / valid_counts[i]
+                    left = self.get_sum(i, 0, left - 1e-6, 1, 0) / len(self.model.X)
+                    right = self.get_sum(i, 0, right, 1, 0) / len(self.model.X)
+                    #left = self.get_sum(i, 0, left - 1e-6, 1, 0) / valid_counts[i]
+                    #right = self.get_sum(i, 0, right, 1, 0) / valid_counts[i]
                     row[i] = (left + right) / 2 - 0.5
             for feature in feature_val_idxs:
                 idx = feature_val_idxs[feature]
@@ -304,6 +312,13 @@ class ModelUtil():
             if name in current_encoding and is_categorical[i]:
                 name = name + ' ' + current_encoding[name][k]
             self.feature_name.append(name)
+
+        #print('feature_name', self.feature_name, len(self.feature_name), len(X[0]))
+        #print(self.ordered_vals[1])
+        #print('X', X[0])
+        #print(self.interpret_path(self.model.paths[0]))
+        #print('X', X[1])
+        #print(self.interpret_path(self.model.paths[1]))
         y = y.astype(int)
         return X, y
 

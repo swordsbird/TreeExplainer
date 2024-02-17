@@ -18,6 +18,7 @@ class Model(BaseModel):
         self.target = 'diagnosis'
         self.output_labels = ['negative', 'positive']
 
+        self.model_id = -1
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
             self.parameters = {
@@ -34,7 +35,7 @@ class Model(BaseModel):
                 'random_state': 10,
             }
 
-    
+
     def init_data(self):
         data_table = self.data_table.drop(['id'], axis=1)
 
@@ -55,7 +56,7 @@ class Model(BaseModel):
         self.check_columns(data_table, self.target)
 
 if __name__ == '__main__':
-    model = Model('random forest')
+    model = Model('lightgbm')
     model.init_data()
     model.train()
     model.get_performance()

@@ -11,9 +11,11 @@ import pickle
 def generate_model_paths(dataset, model_name):
     modelutil = ModelUtil(data_name = dataset, model_name = model_name)
     model = modelutil.model
+    pickle.dump(model.paths, open('path.pkl', 'wb'))
     X, y = modelutil.get_rule_matrix()
     y = y.astype(int)
-    res = LRAnomalyDetection(X[:10000], y[:10000])
+    #res = LRAnomalyDetection(X[:10000], y[:10000])
+    res = LRAnomalyDetection(X, y)
     score = res.score(X, y)
 
     feature_importance = []
@@ -32,7 +34,7 @@ def generate_model_paths(dataset, model_name):
     print('average score', np.mean(score))
     return modelutil
 
-def param_xi_search(model, min_value, max_value, step, n = 80):
+def param_xi_search(model, min_value, max_value, step, n = 80, class_weight=None):
     paths = model.paths
     alpha = model.parameters['n_estimators'] * n / len(paths)
     best_fidelity_test = 0
@@ -41,19 +43,23 @@ def param_xi_search(model, min_value, max_value, step, n = 80):
     pred_train = model.clf.predict(model.X_train)
     pred_test = model.clf.predict(model.X_test)
     ex = Extractor(paths, model.X_train, pred_train)
+    it = 0
+    last_update_it = 0
     while xi <= max_value:
-        w, _, _, _ = ex.extract(n, xi * alpha, 0)
+        w, _, _, _ = ex.extract(n, xi * alpha, 0, class_weight=class_weight)
         fidelity_test = ex.evaluate(w, model.X_test, pred_test)
         print('xi', xi, fidelity_test)
         if fidelity_test > best_fidelity_test:
             best_fidelity_test = fidelity_test
             best_xi = xi
-        elif fidelity_test + 1e-2 < best_fidelity_test:
+            last_update_it = it
+        elif it - last_update_it > 4:
             break
         xi += step
+        it += 1
     return best_xi
 
-def param_lambda_search(model, min_value, max_value, step, xi = 0.5, n = 80):
+def param_lambda_search(model, min_value, max_value, step, xi = 0.5, n = 80, class_weight=None):
     paths = model.paths
     alpha = model.parameters['n_estimators'] * n / len(paths)
     lambda_ = min_value
@@ -61,40 +67,49 @@ def param_lambda_search(model, min_value, max_value, step, xi = 0.5, n = 80):
     pred_test = model.clf.predict(model.X_test)
     ex = Extractor(paths, model.X_train, pred_train)
 
-    w, _, _, _ = ex.extract(n, xi * alpha, lambda_)
-    best_fidelity_test = ex.evaluate(w, model.X_test, model.clf.predict(model.X_test))
-    best_lambda = 0
+    w, _, _, _ = ex.extract(n, xi * alpha, lambda_, class_weight=class_weight)
+    best_fidelity = ex.evaluate(w, model.X_test, pred_test)
+    best_lambda = min_value
+    it = 0
+    last_update_it = 0
+    lambda_ += step
 
     while lambda_ <= max_value:
         w, _, _, _ = ex.extract(n, xi * alpha, lambda_)
-        fidelity_test = ex.evaluate(w, model.X_test, pred_test)
-        print('lambda', lambda_, fidelity_test)
-        if fidelity_test > best_fidelity_test * 0.99:
+        fidelity = ex.evaluate(w, model.X_test, pred_test)
+        print('lambda', lambda_, fidelity)
+        if fidelity > best_fidelity:
+            best_fidelity = fidelity
             best_lambda = lambda_
-        else:
+            last_update_it = it
+        elif fidelity >= best_fidelity * 0.99:
+            best_lambda = lambda_
+            last_update_it = it
+        elif it - last_update_it > 4:
             break
         lambda_ += step
+        it += 1
     return best_lambda
 
-def generate_hierarchy(dataset, model_name, n = 80, xi = -1, lambda_ = -1, n_fold = 4):
+def generate_hierarchy(dataset, model_name, n = 80, xi = -1, lambda_ = -1, class_weight=None):
     modelutil = generate_model_paths(dataset, model_name)
     model = modelutil.model
     paths = model.paths
+    n_fold = 4
     if xi == -1:
         xis = []
         for k_fold in range(1):#range(n_fold):
-            xi = param_xi_search(model, 0.05, 1.5, 0.05, n)
+            xi = param_xi_search(model, 0.025, 1, 0.025, n)
             xis.append(xi)
         xi = np.mean(xis)
-    print('xi', xi)
 
     if lambda_ == -1:
-        lambda_ = param_lambda_search(model, 0, 1, .05, xi, n)
-    print('lambda', lambda_)
+        lambda_ = param_lambda_search(model, 0, .5, .01, xi, n)
+    print('The best parameter: xi', xi, 'lambda', lambda_)
 
     alpha = model.parameters['n_estimators'] * n / len(paths)
     ex = Extractor(paths, model.X_train, model.clf.predict(model.X_train))#, greedy = True)
-    w, _, _, _ = ex.extract(n, xi * alpha, lambda_, class_weight='balanced')
+    w, _, _, _ = ex.extract(n, xi * alpha, lambda_, class_weight=class_weight)
     [idx] = np.nonzero(w)
     accuracy_test = ex.evaluate(w, model.X_test, model.y_test)
     fidelity_test = ex.evaluate(w, model.X_test, model.clf.predict(model.X_test))
@@ -108,9 +123,7 @@ def generate_hierarchy(dataset, model_name, n = 80, xi = -1, lambda_ = -1, n_fol
         'lambda_': lambda_,
     }
     avg_score = np.array([paths[i]['score'] for i in idx]).mean()
-    print('avg_score', avg_score)
-    print('fidelity_test', fidelity_test)
-    print('accuracy_test', accuracy_test)
+    print('avg_score', round(avg_score, 4), 'fidelity', round(fidelity_test, 4), 'accuracy', round(accuracy_test, 4))
 
     return model, paths, level_info, idx
 

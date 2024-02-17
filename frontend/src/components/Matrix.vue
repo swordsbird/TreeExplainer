@@ -699,6 +699,12 @@ export default {
               //.attr('transform', `translate(0,${-header_offset.y + 5})`)
               .call(d3.axisTop(d.scale.scale()).ticks(4))//, "~s"))
           }
+          if (d.range[1] > 1000) {
+            const ts = d3.select(this).select('g.axis').selectAll('.tick').select('text')
+            for (let i = 1; i < ts._groups[0].length; i += 2) {
+              d3.select(ts._groups[0][i]).remove()
+            }
+          }
           d3.select(this).select('g.axis').raise()
         })
         

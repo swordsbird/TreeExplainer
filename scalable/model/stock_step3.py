@@ -28,9 +28,10 @@ class Model(BaseModel):
         self.test_data_table = pd.read_csv(self.test_data_path)
 
         self.target = 'label'
-        self.output_labels = ["decrease", "stable", "increase"]
+        self.output_labels = ["decrease", "increase", "stable"]
         self.model_id = 111
 
+        self.has_categorical_feature = True
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
             self.parameters = {
@@ -59,7 +60,7 @@ class Model(BaseModel):
         for k in data_table.columns:
             if 'industry' in k or 'sector' in k:
                 data_table = data_table.drop(k, axis = 1)
-        #data_table = data_table[current_features]
+        data_table = data_table[current_features]
 
         features = data_table.columns.tolist()
         features = [k for k in features if k != 'rating' and k != 'label']
@@ -79,12 +80,16 @@ class Model(BaseModel):
 
         self.train_rating = data_table['rating'].values
         self.test_rating = self.test_data_table['rating'].values
-        self.X_train = X_train#.values
-        self.y_train = y_train#.values
-        self.X_test = X_test#.values
-        self.y_test = y_test#.values
-        self.X = X_train#.values
-        self.y = y_train#.values
+        #self.X_train = X_train.values
+        #self.y_train = y_train.values
+        self.X_train = X_train
+        self.y_train = y_train
+        #self.X_test = X_test.values
+        #self.y_test = y_test.values
+        self.X_test = X_test
+        self.y_test = y_test
+        self.X = X_train.values
+        self.y = y_train.values
         self.data_table = data_table.drop('rating', axis = 1)
         self.current_features = features
 

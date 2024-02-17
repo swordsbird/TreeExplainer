@@ -7,10 +7,12 @@ from .stock_step0 import Model as StockModelStep0
 from .stock_step1 import Model as StockModelStep1
 from .stock_step2 import Model as StockModelStep2
 from .stock_step3 import Model as StockModelStep3
+from .stock_step4 import Model as StockModelStep4
 from .credit_card import Model as CreditModel
-from .credit_card3 import Model as CreditModel3
+from .credit_card_step1 import Model as CreditModel3
 from .credit_card_step2 import Model as CreditModel4
-
+from .drybean import Model as DrybeanModel
+from .obesity import Model as ObesityModel
 
 def get_model(data_name, model_name, tag=''):
     if data_name == 'abalone':
@@ -25,6 +27,8 @@ def get_model(data_name, model_name, tag=''):
         return StockModelStep2(model_name)
     elif data_name == 'stock_step3':
         return StockModelStep3(model_name)
+    elif data_name == 'stock_step4':
+        return StockModelStep4(model_name)
     elif data_name == 'credit' or data_name == 'Credit Card':
         return CreditModel(model_name)
     elif data_name == 'credit3' or data_name == 'Credit Card3':
@@ -35,5 +39,9 @@ def get_model(data_name, model_name, tag=''):
         return CancerModel(model_name)
     elif data_name == 'german' or data_name == 'German Credit':
         return GermanModel(model_name)
+    elif data_name == 'drybean':
+        return DrybeanModel(model_name)
+    elif data_name == 'obesity':
+        return ObesityModel(model_name)
     else:#if data_name == 'wine':
         return WineModel(model_name)

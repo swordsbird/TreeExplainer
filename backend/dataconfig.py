@@ -45,6 +45,8 @@ data_setting['credit'] = {
 }
 
 data_setting['credit3'] = data_setting['credit']
+data_setting['credit4'] = data_setting['credit']
+data_setting['credit_new'] = data_setting['credit']
 
 data_encoding['credit'] = {
     'Gender': ['Female', 'Male'],
@@ -60,7 +62,9 @@ data_encoding['credit'] = {
     'Approved': ['Rejected', 'Approved'],
 }
 
+data_encoding['credit4'] = data_encoding['credit']
 data_encoding['credit3'] = data_encoding['credit']
+data_encoding['credit_new'] = data_encoding['credit']
 
 data_encoding['german'] = {
     'credit_risk': ['No', 'Yes'],

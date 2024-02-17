@@ -32,11 +32,17 @@ class DataLoader():
         max_level = 2
         self.selected_indexes = [path['name'] for path in self.paths if path['represent']]#self.model['selected']
         self.features = self.info['features']
-        current_encoding = data_encoding.get(name, {})
-        current_setting = data_setting.get(name, {})
+        _name = name
+        if 'stock' in _name:
+            _name = 'stock'
+        elif 'credit' in _name:
+            _name = 'credit'
+        current_encoding = data_encoding.get(_name, {})
+        current_setting = data_setting.get(_name, {})
         self.current_encoding = current_encoding
         self.current_setting = current_setting
-
+        #print('current_encoding', current_encoding)
+        #print('current_setting', current_setting)
         self.info['model_info']['target'] = target
         self.target = target
         if self.info['model_info']['model'] == 'LightGBM':
@@ -106,6 +112,7 @@ class DataLoader():
             children = [(path_dist[i][j], j) for j in self.paths[i]['children']]
             children = sorted(children)
             self.paths[i]['children'] = [j for _, j in children]
+            self.paths[i]['children_dist'] = [d for d, j in children]
             for j in self.paths[i]['children']:
                 self.paths[j]['father'] = i
 
@@ -143,7 +150,10 @@ class DataLoader():
         if type(output) != int:
             output = np.argmax(output)
         distribution = np.array(path['distribution']) * self.class_weight
+        #print('class_weight', self.class_weight, 'distribution', distribution, 'output', output)
         confidence = distribution[output] / distribution.sum()
+        #if np.isnan(confidence):
+        #    print(output, distribution[output], distribution, path)
         return {
             'labeled': self.path_index[path['name']] in self.detector.labeled_data,
             'name': path['name'],
@@ -170,7 +180,7 @@ class DataLoader():
     def model_info(self):
         return self.info['model_info']
 
-    def set_data_table(self, data):
+    def set_data_table(self, data, classes = None):
         # print('data length', len(self.model.y), len(data))
         if len(self.model.y) == len(data):
             pred_y = self.model.clf.predict(self.model.X)
@@ -178,10 +188,7 @@ class DataLoader():
             X, _ = self.model.transform_data(data)
             pred_y = self.model.clf.predict(X)
 
-        try:
-            data['Predict'] = [self.info['model_info']['targets'][i] for i in pred_y]
-        except:
-            data['Predict'] = pred_y
+        data['Predict'] = pred_y
         col = data[self.target].values
         data = data.drop(self.target, axis = 1)
         data['Label'] = col
@@ -200,11 +207,23 @@ class DataLoader():
                 feature['display_name'] = setting[name]['display_name']
 
             if name in encoding:
-                feature['values'] = encoding[name]
-                if data[name].dtype == np.int64 and len(encoding[name]) > 0:
-                    col = data[name].values
-                    data = data.drop(name, axis = 1)
-                    data[name] = [encoding[name][i] for i in col]
+                feature['dtype'] = 'category'
+                if data[name].dtype == np.int64:
+                    if len(encoding[name]) > 0:
+                        feature['values'] = encoding[name]
+                        col = data[name].values
+                        data = data.drop(name, axis = 1)
+                        data[name] = [encoding[name][i] for i in col]
+                    else:
+                        feature['values'] = np.unique(data[name].values).tolist()
+                        feature['values'] = [str(k) for k in feature['values']]
+                else:
+                    if len(encoding[name]) > 0:
+                        feature['values'] = encoding[name]
+                    else:
+                        feature['values'] = np.unique(data[name].values).tolist()
+                        feature['values'] = [str(k) for k in feature['values']]
+                #print(name, feature['values'])
             else:
                 r = feature['values'] = feature['range'] = data[name].astype(float).quantile([0.01, 0.99]).tolist()
                 if r[1] - r[0] > 100:
@@ -220,10 +239,26 @@ class DataLoader():
                 data.loc[data[name] < r[0], name] = r[0]
                 data.loc[data[name] > r[1], name] = r[1]
 
-        classes = self.paths[0]['classes']
         targets = [(i, j) for i, j in enumerate(classes)]
+        if classes is None:
+            classes = self.paths[0]['classes']
+        else:
+            for p in self.paths:
+                p['output_class'] = p['output']
+                #p['output'] = classes[p['output']]
+                p['classes'] = classes
+            try:
+                data['Predict'] = [classes[i] for i in pred_y]
+            except:
+                data['Predict'] = [i for i in pred_y]
+            # print('Label', data['Label'].dtype)
+            if data['Label'].dtype == 'int64':
+                data['Label'] = [classes[i] for i in data['Label']]
+
         self.info['model_info']['targets'] = [x[1] for x in targets]
         weight = np.array([(data['Label'] == c).sum() for c in classes]).astype(np.float64)
+        print('classes', classes)
+        print('weight', weight)
         weight = 1.0 / (weight / weight.max())
         self.class_weight = weight
         self.target_class = classes[1]
@@ -235,59 +270,51 @@ class DatasetLoader():
     def __init__(self):
         data_loader = {}
 
-        '''
-        data_table = pd.read_csv('../data/credit_card_train3.csv')
-        data = pd.read_csv('../data/credit_card_train3.csv')
-        #data_table = pd.read_csv('../data/credit_t.csv')
-        #data = pd.read_csv('../data/credit_t.csv')
-        target = 'Approved'
-        targets = [(0, 'Rejected'), (1, 'Approved')]
+        data_table = pd.read_csv('../data/case1_credit_card/step0.csv')
+        info = pickle.load(open('../output/case/credit_step0.pkl', 'rb'))
+        loader = DataLoader(info, 'credit', 'Approved')
+        loader.set_data_table(data_table, classes = ['Rejected', 'Approved'])
+        data_loader['credit'] = loader
 
-        info = pickle.load(open('../output/dump/credit_step2.pkl', 'rb'))
-        #info = pickle.load(open('../output/dump/credit_v7_0529.pkl', 'rb'))
-        loader = DataLoader(data, info, 'credit', target, targets)
-        loader.set_data_table(data_table)
-        data_loader['credit_new'] = loader
+        data_table = pd.read_csv('../data/case1_credit_card/step1.csv')
+        info = pickle.load(open('../output/case/credit_step1.pkl', 'rb'))
+        loader = DataLoader(info, 'credit', 'Approved')
+        loader.set_data_table(data_table, classes = ['Rejected', 'Approved'])
+        data_loader['credit_step1'] = loader
 
-
-        data_table = pd.read_csv('../data/case2_stock/1year_small_raw.csv')
-        info = pickle.load(open('../output/dump/stock_step0_v1.pkl', 'rb'))
+        data_table = pd.read_csv('../data/case2_stock/step/3year_raw_5.csv')
+        info = pickle.load(open('../output/case/stock_step3.pkl', 'rb'))
         loader = DataLoader(info, 'stock', 'label')
-        loader.set_data_table(data_table)
-        data_loader['stock'] = loader
+        loader.set_data_table(data_table, classes = ["decrease", "increase", "stable"])
+        data_loader['stock2'] = loader
+
+
         '''
+        data_table = pd.read_csv('../data/case2_stock/step/3year_raw_3.csv')
+        info = pickle.load(open('../output/case/stock_step0.pkl', 'rb'))
+        loader = DataLoader(info, 'stock', 'label')
+        loader.set_data_table(data_table, classes = ["decrease", "increase", "stable"])
+        data_loader['stock'] = loader
+
+
+        data_table = pd.read_csv('../data/case2_stock/step/3year_raw_4.csv')
+        info = pickle.load(open('../output/case/stock_step2.pkl', 'rb'))
+        loader = DataLoader(info, 'stock', 'label')
+        loader.set_data_table(data_table, classes = ["decrease", "increase", "stable"])
+        data_loader['stock2'] = loader
 
         data_table = pd.read_csv('../data/case2_stock/step/3year_raw_3.csv')
-        info = pickle.load(open('../output/dump/stock_step0.pkl', 'rb'))
+        info = pickle.load(open('../output/case/stock_step0.pkl', 'rb'))
         loader = DataLoader(info, 'stock', 'label')
-        loader.set_data_table(data_table)
+        loader.set_data_table(data_table, classes = ["decrease", "increase", "stable"])
         data_loader['stock'] = loader
 
-
+        data_table = pd.read_csv('../data/case2_stock/step/3year_raw_3.csv')
+        info = pickle.load(open('../output/case/stock_step1.pkl', 'rb'))
+        loader = DataLoader(info, 'stock', 'label')
+        loader.set_data_table(data_table, classes = ["decrease", "increase", "stable"])
+        data_loader['stock1'] = loader
         '''
-        data = pd.read_csv('../data/stock_ep.csv')
-        target = 'analystConsensus'
-        targets = [(0, 'Increase'), (1, 'Stable'), (2, 'Decrease')]
-
-        info = pickle.load(open('../output/dump/stock_step1.1.pkl', 'rb'))
-        loader = DataLoader(data, info, 'stock', target, targets)
-        print('model', loader.model.X.shape, loader.model.y.shape, )
-        loader.set_data_table(data_table)
-        loader.class_weight = np.array([4, 1, 4])
-        data_loader['stockep'] = loader
-
-        data = pd.read_csv('../data/stock2.csv')
-        target = 'analystConsensus'
-        targets = [(0, 'Increase'), (1, 'Stable'), (2, 'Decrease')]
-
-        info = pickle.load(open('../output/dump/stock_step2.pkl', 'rb'))
-        loader = DataLoader(data, info, 'stock', target, targets)
-        loader.set_data_table(data)
-        loader.class_weight = np.array([4, 1, 4])
-        data_loader['stock2'] = loader
-        '''
-
-
         #loader.discretize()
 
         self.data_loader = data_loader

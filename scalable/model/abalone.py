@@ -19,7 +19,7 @@ class Model(BaseModel):
         self.data_table = pd.read_csv(self.data_path)
         self.target = 'Category size'
         self.output_labels = ['0', '1']
-
+        self.model_id = -1
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
             self.parameters = {
@@ -59,13 +59,12 @@ class Model(BaseModel):
 
         features = data_table.iloc[:, np.r_[0: 7]]
         labels = data_table.iloc[:, 7]
-
         X_train, X_test, y_train, y_test, X_gender_train, X_gender_test = \
             train_test_split(features, labels, onehot_encoded, random_state=random_state, test_size=0.25)
 
         X_train = np.concatenate((X_train, X_gender_train), axis=1)
         X_test = np.concatenate((X_test, X_gender_test), axis=1)
-
+        print('train', data_table.columns)
         self.X_train = X_train
         self.y_train = y_train
         self.X_test = X_test

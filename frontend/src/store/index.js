@@ -19,7 +19,7 @@ function makeScale(type, domain, range) {
     scale = d3.scaleLog()
   } else if (type == 'sqrt') {
     scale = d3.scaleSqrt()
-  } 
+  }
 
   scale.domain(domain)
     .range(range)
@@ -247,7 +247,7 @@ export default new Vuex.Store({
       const histScale = d3.scaleLinear()
         .domain([0, hist_max])
         .range([0, 25])
-      
+
       const has_pin = features.filter(d => d.pin).length
       if (zoom_level >= state.matrixview.zoom_level) {
         const fold_items_per_page = state.matrixview.fold_items_per_page - has_pin + (zoom_level == 0 ? 8 : 0)
@@ -258,7 +258,7 @@ export default new Vuex.Store({
           .sort((a, b) => a - b)
         const increase_thres = Math.max(0.15, changes[changes.length - 3] || 0)
         const decrease_thres = Math.min(-0.15, changes[2] || 0)
-        
+
         features.forEach(d => {
           if (d.count_change > increase_thres) {
             d.hint_change = 'arrow-up-thick'
@@ -270,7 +270,11 @@ export default new Vuex.Store({
         })
 
         if (zoom_level == 0) {
-          fold_info.n_pages = 4
+          if (fold_features.length < 20) {
+            fold_info.n_pages = 1
+          } else {
+            fold_info.n_pages = 4
+          }
           //TODO: the right pages
         } else {
           fold_info.n_pages = Math.ceil(fold_features.length / fold_items_per_page)
@@ -287,6 +291,7 @@ export default new Vuex.Store({
         fold_info.has_left_page = fold_info.page > 0
         fold_info.has_right_page = fold_info.page + 1 < fold_info.n_pages
       }
+      console.log('foldinfo', fold_info)
 
       const rule_anomaly_delta = rules.map(d => d.anomaly - d.initial_anomaly).sort((a, b) => a - b)
       const hint_delta_min = Math.min(-0.1, rule_anomaly_delta[1] || 0)
@@ -314,6 +319,19 @@ export default new Vuex.Store({
           d.show_hist = false
         }
       })
+      let tot_hist = rules.filter(d => d.show_hist).length
+      if (tot_hist >= 20) {
+        rules.forEach(d => {
+          d.show_hist = 0
+        })
+        tot_hist = 0
+        rules.forEach(d => {
+            if (d.is_selected) {
+                d.show_hist = 1
+                tot_hist += 1
+            }
+        })
+      }
 
       let has_primary_key = false
       const preserved_keys = new Set(state.matrixview.extended_cols.map(d => d.index))
@@ -331,7 +349,7 @@ export default new Vuex.Store({
           rules = rules.sort((a, b) => {
             for (let index = 0; index < state.matrixview.order_keys.length; ++index) {
               const key = state.matrixview.order_keys[index].key
-              const order = state.matrixview.order_keys[index].order              
+              const order = state.matrixview.order_keys[index].order
               if (preserved_keys.has(key)) {
                 return order * (a[key] - b[key])
               } else {
@@ -347,7 +365,7 @@ export default new Vuex.Store({
                   } else {
                     return +order * (a.range_key[key] - b.range_key[key])
                   }
-                } 
+                }
               }
             }
             return a.predict - b.predict
@@ -364,7 +382,7 @@ export default new Vuex.Store({
               .sort((a, b) => {
                 for (let index = 0; index < state.matrixview.order_keys.length; ++index) {
                   const key = state.matrixview.order_keys[index].key
-                  const order = state.matrixview.order_keys[index].order              
+                  const order = state.matrixview.order_keys[index].order
                   if (preserved_keys.has(key)) {
                     return order * (a[key] - b[key])
                   } else {
@@ -421,14 +439,14 @@ export default new Vuex.Store({
       const matrix_padding = state.matrixview.padding
       const coverage_width = state.matrixview.coverage_width
 
-      const main_width = width 
-        - (matrix_padding + coverage_width) * extended_cols.length 
+      const main_width = width
+        - (matrix_padding + coverage_width) * extended_cols.length
         + 2 * state.matrixview.glyph_padding
         - focus_extend_width
         - fold_gap
       const width_ratio = main_width / feature_sum
       const main_start_x =
-        (matrix_padding + coverage_width) * extended_cols.filter(d => d.position < 0).length 
+        (matrix_padding + coverage_width) * extended_cols.filter(d => d.position < 0).length
         + state.matrixview.glyph_padding + state.matrixview.glyph_width + 5
         + (has_pin ? 0 : fold_left_gap)
       const main_end_x = main_start_x
@@ -441,17 +459,20 @@ export default new Vuex.Store({
         .range(feature_range)
 
       const coverage_range = d3.extent(rules, d => d.coverage)
-      const instance_height = height / state.matrixview.n_lines - state.matrixview.row_padding//state.matrixview.row_height.medium
-        
+      const max_coverage = Math.max(...rules.map(d => d.coverage))
+      if (max_coverage > state.max_rule_coverage) {
+        state.max_rule_coverage = max_coverage
+      }
+      console.log('max_coverage', max_coverage, state.max_rule_coverage)
       const coverageScale = d3.scaleLinear()
 //        .domain([0, Math.max(...rules.map(d => d.coverage))])
-        .domain([0, 1])
-        .range([0, coverage_width])
-        
+        .domain([0, state.max_rule_coverage])
+        .range([0, coverage_width * 0.75])
+
       let fidelityScale = d3.scaleLinear()
-        .domain([0, 1])
-        .range([0, coverage_width])
-        //.range([coverage_width * 0.75, coverage_width])
+        .domain([0, 0.2, 0.8, 1])
+        .range([0, coverage_width*0.1, coverage_width*0.9, coverage_width])
+      //.range([coverage_width * 0.75, coverage_width])
       if (state.model_info.weighted) {
         // fidelityScale.range([coverage_width * 0.75, coverage_width])
       }
@@ -468,13 +489,14 @@ export default new Vuex.Store({
       const numScale = d3.scaleSqrt()
         .domain([Math.min(...rules.map(d => d.num_children)), Math.max(...rules.map(d => d.num_children))])
         .range([10, 60])
-        
+
       const rows = []
       let y = state.matrixview.row_padding
       if (rules.length * state.matrixview.row_height.large < height) {
         rules.forEach(d => d.show_hist = 1)
       }
       let lastheight = 0
+      const instance_height = (height - tot_hist * state.matrixview.row_height.large) / (state.matrixview.n_lines - tot_hist) - state.matrixview.row_padding//state.matrixview.row_height.medium
       for (let i = 0; i < rules.length; ++i) {
         const rule = rules[i]
         const glyphheight = instance_height
@@ -524,7 +546,7 @@ export default new Vuex.Store({
       const cols = []
       const indexed_cols = []
       const feature_padding = state.matrixview.cell.feature_padding
-      
+
       for (let i = 0; i < features.length; ++i) {
         const feature = features[i]
         const has_key = orderkey_set.has(feature.index)
@@ -542,8 +564,8 @@ export default new Vuex.Store({
             //left_width -= delta
 
           }
-        let range = feature.dtype == "category" ? 
-          [0, feature.values.length] : 
+        let range = feature.dtype == "category" ?
+          [0, feature.values.length] :
           [Math.min(0, feature.range[0]), feature.range[1]]
 
         // TODO: handle distortion
@@ -562,7 +584,7 @@ export default new Vuex.Store({
           hist: feature.hist.map((d, j) => ({
             width: 10,
             height: histScale(d),
-            x: 8 + width / (feature.hist.length + 1) * j,
+            x: 9 + (width - 26) / (feature.hist.length - 1) * j,
             y: 33 - histScale(d) + height,
             fill: state.dataset.color.color_schema[j],
           })),
@@ -621,7 +643,7 @@ export default new Vuex.Store({
           fold_info.right_x += focus_extend_width + fold_left_gap
         }
       }
-      
+
       /*
       if (has_pin) {
         x += current_fold_width
@@ -677,7 +699,7 @@ export default new Vuex.Store({
             if (x1 >= feature.display_range[1] - min_gap) {
               x1 = feature.display_range[1]
             }
-            
+
             if (x0 + min_gap > x1) {
               let delta = x0 + min_gap - x1
               if (x0 + min_gap >= feature.width) {
@@ -745,7 +767,7 @@ export default new Vuex.Store({
               for (let i = 0; i < d.cond.range.length; ++i) {
                 if (d.cond.range[i]) {
                   items.push(d.feature.values[i])
-                  if (typeof d.feature.values[i] === 'number') 
+                  if (typeof d.feature.values[i] === 'number')
                     code += `(data['${d.name}'] == ${d.feature.values[i]})`
                   else
                     code += `(data['${d.name}'] == '${d.feature.values[i]}')`
@@ -756,7 +778,7 @@ export default new Vuex.Store({
               for (let i = 0; i < d.cond.range.length; ++i) {
                 if (!d.cond.range[i]) {
                   items.push(d.feature.values[i])
-                  if (typeof d.feature.values[i] === 'number') 
+                  if (typeof d.feature.values[i] === 'number')
                     code += `(data['${d.name}'] != ${d.feature.values[i]})`
                   else
                     code += `(data['${d.name}'] != '${d.feature.values[i]}')`
@@ -855,7 +877,7 @@ export default new Vuex.Store({
         fold_info,
         has_pin,
         main_start_x,
-        main_width,        
+        main_width,
         features,
         rules,
         cols,
@@ -887,7 +909,7 @@ export default new Vuex.Store({
     // primary + secondary 双排序
     // filter by one feature (age)
     // sample background - switch - typical sample
-    // more filter / legend 
+    // more filter / legend
     // zoom in with more space, line to encoding a sample
     // star to encoding represent rules
     // anomaly => Anomaly Score
@@ -1034,7 +1056,7 @@ export default new Vuex.Store({
       }
       if (data == null) {
         state.matrixview.last_show_rules = []
-        resp = await axios.post(`${state.server_url}/api/selected_rules`, { dataname: state.dataset.name, session_id: state.session_id }) 
+        resp = await axios.post(`${state.server_url}/api/selected_rules`, { dataname: state.dataset.name, session_id: state.session_id })
       } else {
         resp = await axios.post(`${state.server_url}/api/explore_rules`, { dataname: state.dataset.name, session_id: state.session_id, idxs: data, N: ~~(state.matrixview.n_lines ) })
       }

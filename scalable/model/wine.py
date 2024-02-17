@@ -19,12 +19,13 @@ class Model(BaseModel):
         self.target = 'quality'
         self.output_labels = ['low', 'high']
 
+        self.model_id = -1
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
             self.parameters = {
-                'n_estimators': 200, 
-                'max_depth': 15, 
-                'min_samples_split': 5, 
+                'n_estimators': 200,
+                'max_depth': 15,
+                'min_samples_split': 5,
                 'min_samples_leaf': 2,
                 'bootstrap': True,
                 'random_state': random_state,
@@ -41,7 +42,7 @@ class Model(BaseModel):
                 'random_state': random_state,
             }
 
-    
+
     def init_data(self):
         data_table = self.data_table
 

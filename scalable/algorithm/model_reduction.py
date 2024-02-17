@@ -65,8 +65,8 @@ class Extractor:
         self.n_classes = paths[0].get('n_classes', 2)
         self.n_paths = len(paths)
         self.classes = paths[0].get('classes', [])
-        if self.n_classes == 2:
-            self.classes = np.unique(y_train)
+        #if self.n_classes == 2:
+        #    self.classes = np.unique(y_train)
         for p in paths:
             if 'cost' not in p:
                 p['cost'] = 1
@@ -170,7 +170,6 @@ class Extractor:
                     if y[i] == class0:
                         for dim in range(n_dims):
                             constr_weight[i + dim * n_samples] = weight[ci]
-            print('weight', weight)
         for p_i, path in enumerate(paths):
             if path['skip']:
                 continue

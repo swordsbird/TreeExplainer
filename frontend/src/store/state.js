@@ -67,7 +67,14 @@ const datasets = [{
   label0: ['No', 'Yes'],
   color: default_color,
 }, {
-  name: 'credit_new',
+  name: 'credit_step1',
+  format: '1',
+  target: 'Approved',
+  label: ['reject', 'accept'],
+  label0: ['No', 'Yes'],
+  color: default_color,
+}, {
+  name: 'credit_step2',
   format: '1',
   target: 'Approved',
   label: ['reject', 'accept'],
@@ -81,6 +88,13 @@ const datasets = [{
   label0: ["Increase", "Stable", "Decrease"],
   color: stock_color,
 }, {
+  name: 'stock1',
+  format: '4',
+  target: 'analystConsensus',
+  label: ["Increase", "Stable", "Decrease"],
+  label0: ["Increase", "Stable", "Decrease"],
+  color: stock_color,
+}, {
   name: 'stock2',
   format: '4',
   target: 'analystConsensus',
@@ -88,7 +102,7 @@ const datasets = [{
   label0: ["Increase", "Stable", "Decrease"],
   color: stock_color,
 }, {
-  name: 'stockep',
+  name: 'stock3',
   format: '4',
   target: 'analystConsensus',
   label: ["Increase", "Stable", "Decrease"],
@@ -97,7 +111,7 @@ const datasets = [{
 }]
 
 const state = {
-    server_url: 'http://166.111.81.51:5005',
+    server_url: 'http://166.111.81.51:5000',
     layout: null,
     primary: {
       key: null,
@@ -111,7 +125,7 @@ const state = {
     coverfilter: () => 1,
     highlighted_sample: undefined,
     instances: [],
-    dataset: datasets[4],
+    dataset: datasets[7],
     stack: [],
     dataset_candidates: datasets,
     data_features: [],
@@ -174,6 +188,7 @@ const state = {
     },
     page: { width: 1800, height: 1000 },
     covered_samples: [],
+    max_rule_coverage: 0.01,
     summary: {
       current: null,
       info: null,

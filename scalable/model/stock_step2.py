@@ -20,11 +20,12 @@ class Model(BaseModel):
         self.data_path = os.path.join(data_path, 'case2_stock/step/3year_4.csv')
         self.data_table = pd.read_csv(self.data_path)
 
+        self.has_categorical_feature = True
         self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month_4.csv')
         self.test_data_table = pd.read_csv(self.test_data_path)
 
         self.target = 'label'
-        self.output_labels = ["decrease", "stable", "increase"]
+        self.output_labels = ["decrease", "increase", "stable"]
         self.model_id = 110
 
         self.model_name = model_name

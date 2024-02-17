@@ -5,6 +5,7 @@ import sys
 sys.path.append('.')
 import pandas as pd
 from scalable.model.base_model import BaseModel
+from scalable.anomaly import LRAnomalyDetection
 from scalable.model.data_encoding import stock_encoding
 import numpy as np
 from scalable.config import data_path
@@ -20,18 +21,23 @@ class Model(BaseModel):
         self.data_path = os.path.join(data_path, 'case2_stock/step/3year_3.csv')
         self.data_table = pd.read_csv(self.data_path)
 
+        self.has_categorical_feature = True
         self.test_data_path = os.path.join(data_path, 'case2_stock/step/3month_3.csv')
         self.test_data_table = pd.read_csv(self.test_data_path)
 
         self.target = 'label'
-        self.output_labels = ["decrease", "stable", "increase"]
-        self.model_id = 105
+        self.output_labels = ["decrease", "increase", "stable"]
+        # self.model_id = 105
 
+        self.model_id = -1
         self.model_name = model_name
         if model_name == 'rf' or model_name == 'random forest':
             self.parameters = {
-                'n_estimators': 150,
-                'max_depth': 30,
+                'n_estimators': 200,
+                'max_depth': 13,
+                'max_leaf_nodes': 100,
+                'class_weight': {0: 3.5, 1: 5.5, 2: 1, 'decrease': 3.5, 'increase': 5.5, 'stable': 1},
+                #'class_weight': 'balanced',
                 'random_state': random_state,
             }
         else:
@@ -49,11 +55,14 @@ class Model(BaseModel):
     def init_data(self):
         self.data_table = self.data_table.drop('date', axis=1)
         self.test_data_table = self.test_data_table.drop('date', axis=1)
+        if self.model_name == 'random forest' or self.model_name == 'rf':
+            self.data_table = self.data_table.fillna(0)
+            self.test_data_table = self.test_data_table.fillna(0)
+
 
         data_table = self.data_table.drop('ticker', axis=1)
         data_table = data_table.drop('newPrice', axis = 1)
         data_table = data_table.drop('currentPrice', axis = 1)
-
         features = data_table.columns.tolist()
         features = [k for k in features if k != 'rating' and k != 'label']
         print(f'{len(features)} features')
@@ -84,7 +93,7 @@ class Model(BaseModel):
         self.check_columns(self.data_table, self.target)
 
 if __name__ == '__main__':
-    model = Model('lightgbm')
+    model = Model('random forest')
     model.init_data()
     # print(model.X_train.mean())
     model.train()
@@ -148,5 +157,14 @@ if __name__ == '__main__':
         i = model.current_features[int(i.split('_')[1])]
         # print(i, j)
 
-    model.generate_path()
-
+    # model.generate_path()
+    '''
+    from scalable.model_utils import ModelUtil
+    util = ModelUtil(data_name = 'stock_step0', model_name = 'lightgbm')
+    X, y = util.get_rule_matrix()
+    y = y.astype(int)
+    detect = LRAnomalyDetection(X, y)
+    score = detect.score()
+    print('score', score.mean())
+    np.save('score.npy', score)
+    '''

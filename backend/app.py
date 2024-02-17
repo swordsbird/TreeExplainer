@@ -63,7 +63,7 @@ def get_data():
     features = [feature for feature in loader.data_table.columns]
     first_columns = ['id', 'Predict', 'Label']
     features = [feature for feature in features if feature in first_columns] + [feature for feature in features if feature not in first_columns]
-    n = 2000
+    n = 5000
     values = []
     for feature in features:
         if loader.data_table[feature].dtype != np.float64:
@@ -124,9 +124,12 @@ def get_explore_rules():
     fathers = data['idxs']
     idxes = []
     father_idxes = []
+    dist = {}
     for name in fathers:
         j = loader.path_index[name]
         neighbors = loader.paths[j]['children']
+        for k in range(len(neighbors)):
+            dist[neighbors[k]] = loader.paths[j]['children_dist'][k]
         idxes += [j] + neighbors
         father_idxes.append(j)
     idxset = set()
@@ -138,13 +141,21 @@ def get_explore_rules():
     idxes = new_idxes
     relevant_sample_idxes = loader.get_relevant_samples(father_idxes)
     idxes = [(i, d) for i, d in enumerate(idxes)]
-    n = 80 - len(father_idxes) * 4
+    if len(father_idxes) < 20:
+        n = 80 - len(father_idxes) * 2
+    else:
+        n = 80 - len(father_idxes)
     if len(idxes) > n:
         if len(fathers) == 1:
             idxes = idxes[:n]
         else:
             idxes1 = [x for x in idxes if x[1] in father_idxes]
             idxes2 = [x for x in idxes if x[1] not in father_idxes]
+            idxes2 = [[x[0], x[1], loader.paths[x[1]]['weight']] for x in idxes2]
+            idxes2 = sorted(idxes2, key = lambda x: -x[2])
+            idxes2 = idxes2[:n]
+            idxes2 = [(x[0], x[1]) for x in idxes2]
+            '''
             paths = [loader.paths[x[1]] for x in idxes2]
             X = np.array(loader.model.X)
             X = X[relevant_sample_idxes]
@@ -154,10 +165,11 @@ def get_explore_rules():
             alpha = loader.model.parameters['n_estimators'] * n / len(loader.paths)
             ex = Extractor(paths, X, pred_y)
             w, _, _, _ = ex.extract(n, xi * alpha, lambda_)
-            fidelity_test = ex.evaluate(w, X, y)
+            fidelity_test = ex.evaluate(w, X, pred_y)
             print("fidelity", fidelity_test, len(relevant_sample_idxes), "samples")
             [idx] = np.nonzero(w)
             idxes2 = [idxes2[i] for i in idx]
+            '''
             idxes = idxes1 + idxes2
             idxes.sort()
     idxes = [x[1] for x in idxes]
