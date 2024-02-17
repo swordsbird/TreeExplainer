@@ -1,0 +1,6 @@
+{
+    "dataset": ["cancer", "wine", "credit", "abalone", "obesity", "drybean", "stock_step0"],
+    "multiclass": [0, 0, 0, 0, 1, 1, 1],
+    "model": ["random forest", "lightgbm"],
+    "number_of_rules": [80]
+}
