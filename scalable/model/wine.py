@@ -33,12 +33,9 @@ class Model(BaseModel):
         else:
             self.parameters = {
                 'n_estimators': 200,
-                'learning_rate': 0.25,
+                'learning_rate': 0.05,
                 'num_leaves': 100,
                 'max_depth': 10,
-                'min_data_in_leaf': 200,
-                'lambda_l1': 0.1,
-                'lambda_l2': 10,
                 'random_state': random_state,
             }
 
@@ -69,7 +66,7 @@ class Model(BaseModel):
         self.check_columns(data_table, self.target)
 
 if __name__ == '__main__':
-    model = Model('random forest')
+    model = Model('lightgbm')
     model.init_data()
     model.train()
     model.get_performance()

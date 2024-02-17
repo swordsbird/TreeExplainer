@@ -126,7 +126,7 @@ def assign_samples_lgbm(paths, data, model):
             path['is_multiclass'] = False
         else:
             path['output'] = [0 for c in model.classes_]
-            o = path['tree_index'] % 3
+            o = path['tree_index'] % len(model.classes_)
             path['output'][o] = path['value']
             path['is_multiclass'] = True
             path['output_class'] = o

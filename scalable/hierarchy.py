@@ -49,7 +49,7 @@ def param_xi_search(model, min_value, max_value, step, n = 80, class_weight=None
         w, _, _, _ = ex.extract(n, xi * alpha, 0, class_weight=class_weight)
         fidelity_test = ex.evaluate(w, model.X_test, pred_test)
         print('xi', xi, fidelity_test)
-        if fidelity_test > best_fidelity_test:
+        if fidelity_test >= best_fidelity_test:
             best_fidelity_test = fidelity_test
             best_xi = xi
             last_update_it = it
@@ -99,12 +99,12 @@ def generate_hierarchy(dataset, model_name, n = 80, xi = -1, lambda_ = -1, class
     if xi == -1:
         xis = []
         for k_fold in range(1):#range(n_fold):
-            xi = param_xi_search(model, 0.025, 1, 0.025, n)
+            xi = param_xi_search(model, 0.1, 1, 0.025, n)
             xis.append(xi)
         xi = np.mean(xis)
 
     if lambda_ == -1:
-        lambda_ = param_lambda_search(model, 0, .5, .01, xi, n)
+        lambda_ = param_lambda_search(model, 0, .5, .025, xi, n)
     print('The best parameter: xi', xi, 'lambda', lambda_)
 
     alpha = model.parameters['n_estimators'] * n / len(paths)

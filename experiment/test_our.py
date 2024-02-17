@@ -30,16 +30,16 @@ for n in config["number_of_rules"]:
             if k in existing_result:
                 print('passed')
                 continue
-            model, paths, info, _ = generate_hierarchy(data_name, model_name, n = n, class_weight='balanced')
+            model, paths, info, _ = generate_hierarchy(data_name, model_name, n = n)#, class_weight='balanced')
             original_accuracy, prec, f1 = model.get_performance()
             original_accuracy = round(original_accuracy, 4)
             print(f'Number of rules: {len(paths)}')
             alpha = model.parameters['n_estimators'] * n / len(paths)
             ex = Extractor(paths, model.X_train, model.clf.predict(model.X_train))
             w = np.array([p['weight'] for p in paths])
-            fidelity_test = ex.evaluate(w, model.X_train, model.clf.predict(model.X_train))
-            fidelity_test = round(fidelity_test, 4)
-            accuracy = ex.evaluate(w, model.X_train, model.y_train)
+            fidelity = ex.evaluate(w, model.X_test, model.clf.predict(model.X_test))
+            fidelity = round(fidelity, 4)
+            accuracy = ex.evaluate(w, model.X_test, model.y_test)
             accuracy = round(accuracy, 4)
             # fidelity_train = ex.evaluate(w, model.X_train, model.clf.predict(model.X_train))
             # fidelity_train = round(fidelity_train, 4)
@@ -51,12 +51,12 @@ for n in config["number_of_rules"]:
                 'model': model_name,
                 'original_accuracy': original_accuracy,
                 'surrogate_accuracy': accuracy,
-                'fidelity': fidelity_test,
+                'fidelity': fidelity,
                 'actual_rules': len(np.flatnonzero(w)),
                 'expected_rules': n,
             }
 
-            print(f'fidelity: {round(fidelity_test, 4)}')
+            print(f'fidelity: {round(fidelity, 4)}')
             f = open(fname, 'a')
             f.write(json.dumps(ret) + '\n')
             f.close()

@@ -1,14 +1,13 @@
 {"dataset": "cancer", "model": "random forest", "original_accuracy": 0.993, "surrogate_accuracy": 0, "fidelity": 0.9836, "actual_rules": 5, "expected_rules": 80}
-{"dataset": "wine", "model": "random forest", "original_accuracy": 0.87, "surrogate_accuracy": 0, "fidelity": 0.8449, "actual_rules": 21, "expected_rules": 80}
-{"dataset": "wine", "model": "lightgbm", "original_accuracy": 0.87, "surrogate_accuracy": 0, "fidelity": 0.8521, "actual_rules": 23, "expected_rules": 80}
-{"dataset": "credit", "model": "random forest", "original_accuracy": 0.836, "surrogate_accuracy": 0, "fidelity": 0.9606, "actual_rules": 7, "expected_rules": 80}
-{"dataset": "abalone", "model": "random forest", "original_accuracy": 0.8287, "surrogate_accuracy": 0, "fidelity": 0.9052, "actual_rules": 4, "expected_rules": 80}
-{"dataset": "abalone", "model": "lightgbm", "original_accuracy": 0.8335, "surrogate_accuracy": 0, "fidelity": 0.7845, "actual_rules": 6, "expected_rules": 80}
-{"dataset": "obesity", "model": "random forest", "original_accuracy": 0.9413, "surrogate_accuracy": 0, "fidelity": 0.6968, "actual_rules": 28, "expected_rules": 80}
-{"dataset": "obesity", "model": "lightgbm", "original_accuracy": 0.9773, "surrogate_accuracy": 0, "fidelity": 0.7025, "actual_rules": 28, "expected_rules": 80}
-{"dataset": "drybean", "model": "random forest", "original_accuracy": 0.8954, "surrogate_accuracy": 0, "fidelity": 0.9183, "actual_rules": 10, "expected_rules": 80}
-{"dataset": "drybean", "model": "lightgbm", "original_accuracy": 0.9268, "surrogate_accuracy": 0, "fidelity": 0.8108, "actual_rules": 11, "expected_rules": 80}
-{"dataset": "stock_step0", "model": "random forest", "original_accuracy": 0.5892, "surrogate_accuracy": 0, "fidelity": 0.7226, "actual_rules": 11, "expected_rules": 80}
-{"dataset": "stock_step0", "model": "lightgbm", "original_accuracy": 0.5626, "surrogate_accuracy": 0, "fidelity": 0.2913, "actual_rules": 5, "expected_rules": 80}
-{"dataset": "credit", "model": "lightgbm", "original_accuracy": 0.824, "surrogate_accuracy": 0, "fidelity": 0.9366, "actual_rules": 8, "expected_rules": 80}
 {"dataset": "cancer", "model": "lightgbm", "original_accuracy": 0.986, "surrogate_accuracy": 0, "fidelity": 0.9836, "actual_rules": 5, "expected_rules": 80}
+{"dataset": "wine", "model": "random forest", "original_accuracy": 0.87, "surrogate_accuracy": 0, "fidelity": 0.8948, "actual_rules": 18, "expected_rules": 80}
+{"dataset": "credit", "model": "random forest", "original_accuracy": 0.836, "surrogate_accuracy": 0, "fidelity": 0.9709, "actual_rules": 5, "expected_rules": 80}
+{"dataset": "credit", "model": "lightgbm", "original_accuracy": 0.824, "surrogate_accuracy": 0, "fidelity": 0.8887, "actual_rules": 7, "expected_rules": 80}
+{"dataset": "abalone", "model": "random forest", "original_accuracy": 0.8287, "surrogate_accuracy": 0, "fidelity": 0.7963, "actual_rules": 5, "expected_rules": 80}
+{"dataset": "drybean", "model": "random forest", "original_accuracy": 0.8954, "surrogate_accuracy": 0, "fidelity": 0.9155, "actual_rules": 10, "expected_rules": 80}
+{"dataset": "drybean", "model": "lightgbm", "original_accuracy": 0.9268, "surrogate_accuracy": 0, "fidelity": 0.7919, "actual_rules": 11, "expected_rules": 80}
+{"dataset": "obesity", "model": "random forest", "original_accuracy": 0.9413, "surrogate_accuracy": 0, "fidelity": 0.7581, "actual_rules": 33, "expected_rules": 80}
+{"dataset": "obesity", "model": "lightgbm", "original_accuracy": 0.9773, "surrogate_accuracy": 0, "fidelity": 0.7738, "actual_rules": 35, "expected_rules": 80}
+{"dataset": "stock", "model": "random forest", "original_accuracy": 0.5504, "surrogate_accuracy": 0, "fidelity": 0.7371, "actual_rules": 20, "expected_rules": 80}
+{"dataset": "wine", "model": "lightgbm", "original_accuracy": 0.88, "surrogate_accuracy": 0, "fidelity": 0.9304, "actual_rules": 14, "expected_rules": 80}
+{"dataset": "abalone", "model": "lightgbm", "original_accuracy": 0.8335, "surrogate_accuracy": 0, "fidelity": 0.7845, "actual_rules": 6, "expected_rules": 80}
